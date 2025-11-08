@@ -1,13 +1,121 @@
+:root {
+  --color-bg: #F5F7FB;
+  --color-card: #FFFFFF;
+  --color-text: #0F172A;
+  --color-muted: #6B7280;
+  --color-primary: #EF7100; /* primary theme color set to orange */
+  --color-accent: #EF7100; /* keep accent aligned; adjust if you want contrast */
+  --radius: 10px;
+  --radius-sm: 6px;
+  --shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  --border: 1px solid #E5E7EB;
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+}
+
+html, body, #root { height: 100%; }
+
 body {
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
-    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
-    sans-serif;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-code {
-  font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
-    monospace;
+*, *::before, *::after { box-sizing: border-box; }
+
+/* Layout helpers */
+.page { min-height: 100vh; background: var(--color-bg); }
+.container { max-width: 1200px; width: 100%; margin: 0 auto; padding: var(--space-4) var(--space-5) var(--space-5);     padding-top: 20px;}
+.container.wide { max-width: 100%; padding-left: var(--space-5); padding-right: var(--space-5); }
+.header {
+  /* Acrylic-style translucent header */
+  background: rgba(239, 113, 0, 0.78);
+  color: #fff;
+  padding: var(--space-3) var(--space-5);
+  display: flex; align-items: center; justify-content: space-between;
+  backdrop-filter: blur(10px) saturate(120%);
+  -webkit-backdrop-filter: blur(10px) saturate(120%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+  /* subtle sand-like noise overlay */
+  background-image:
+    radial-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
+    radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
+  background-size: 2px 2px, 3px 3px;
+  background-position: 0 0, 1px 1px;
+}
+.header a { text-decoration: none; margin-right: var(--space-4); }
+.header a:not(.btn) { color: #fff; }
+.header .btn { color: #111827; }
+.header a:last-child { margin-right: 0; }
+
+.section-title { color: var(--color-accent); margin: 0 0 var(--space-3); font-weight: 700; }
+
+.card { 
+  background: rgba(255, 255, 255, 0.82);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: var(--space-5);
+  width: 100%;
+  backdrop-filter: blur(8px) saturate(110%);
+  -webkit-backdrop-filter: blur(8px) saturate(110%);
+  /* subtle sand-like texture */
+  background-image:
+    radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
+    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 3px 3px, 4px 4px;
+  background-position: 0 0, 1px 1px;
+}
+.card.narrow { max-width: 420px; width: 100%; margin: 0 auto; }
+.card-title { margin: 0 0 var(--space-2); font-size: 18px; font-weight: 700; }
+
+.grid-cards { display: grid; gap: var(--space-5); grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); margin-bottom: var(--space-5); }
+
+/* Flex helpers */
+.row { display: flex; gap: var(--space-4); }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); }
+
+/* Form */
+.field { margin-bottom: var(--space-4); }
+.label { display: block; margin-bottom: var(--space-2); color: #374151; font-weight: 500; }
+.input, .textarea, .select {
+  width: 100%;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px solid #D1D5DB;
+  background: #fff;
+  font-size: 14px;
+}
+.textarea { min-height: 96px; resize: vertical; }
+
+/* Buttons */
+.btn { padding: 10px 16px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; background: #E5E7EB; color: #111827; }
+.btn-primary { background: var(--color-primary); color: #fff; }
+.btn-accent { background: var(--color-accent); color: #fff; }
+.btn-outline { background: #fff; border: 1px solid #D1D5DB; color: #111827; }
+.btn:disabled { opacity: .7; cursor: not-allowed; }
+
+/* Images */
+.cover { width: 100%; height: 200px; object-fit: cover; border-radius: var(--radius-sm); }
+
+/* Logos */
+.logo-small { width: 28px; height: 28px; border-radius: 6px; object-fit: contain; background: #fff; padding: 2px; box-shadow: var(--shadow); }
+.logo-large { width: 96px; height: 96px; border-radius: 12px; object-fit: cover; box-shadow: var(--shadow); }
+
+/* Page-specific backgrounds */
+.page.bg-login {
+  background: url("./Wallpaper para cll.jpg") center/cover no-repeat;
+  background-attachment: fixed;
+}
+
+.page.bg-student {
+  background: url("./Orange And Blue Abstract Background PNG Images,  Png, Joyous, Poster Banner PNG Transparent Background - Pngtree.jpg") center/cover no-repeat;
+  background-attachment: fixed;
 }
