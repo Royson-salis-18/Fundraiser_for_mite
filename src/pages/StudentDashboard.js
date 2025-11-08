@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { payments } from '../mockData';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
@@ -7,13 +7,27 @@ import ProfileOverlay from '../components/ProfileOverlay';
 import SettingsOverlay from '../components/SettingsOverlay';
 
 
-const StudentDashboard = ({ user, setUser, handleLogout }) => {
+const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }) => {
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
+  const [showAddedModal, setShowAddedModal] = useState(false);
+  const [addedItem, setAddedItem] = useState(null);
   const [filter, setFilter] = useState('all');
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Show success modal if coming from checkout with success flag
+  React.useEffect(() => {
+    if (location.state?.showPaymentSuccess) {
+      setShowSuccessModal(true);
+      // Clear the navigation state so modal doesn't reappear on refresh
+      navigate('/student-dashboard', { replace: true, state: {} });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state]);
 
   // Validate required props after hooks
   if (!user || !setUser) {
@@ -55,6 +69,11 @@ const StudentDashboard = ({ user, setUser, handleLogout }) => {
       };
       setUser(updatedUser);
     }
+    if (typeof addToCart === 'function') {
+      addToCart(payment);
+    }
+    setAddedItem(payment);
+    setShowAddedModal(true);
   };
 
   // Settings handled via Settings page; logout handled via prop
@@ -120,7 +139,7 @@ const StudentDashboard = ({ user, setUser, handleLogout }) => {
         titleTo="/student-dashboard"
         subtitle={`USN: ${user.usn}`}
         links={[
-          { to: '/cart', label: 'Cart' },
+          { to: '/cart', label: cartLength != null ? `Cart (${cartLength})` : 'Cart' },
         ]}
         extraRight={(
           <>
@@ -188,7 +207,16 @@ const StudentDashboard = ({ user, setUser, handleLogout }) => {
                           <p style={{ color: 'green' }}>Paid</p>
                         )
                       ) : (
-                        <button onClick={() => handleSelectOptional(payment)} className="btn btn-primary">Add</button>
+                        (() => {
+                          const opt = user.payments.optional.find((p) => p.id === payment.id);
+                          if (!opt) {
+                            return <button onClick={() => handleSelectOptional(payment)} className="btn btn-primary">Add</button>;
+                          }
+                          if (opt.paid) {
+                            return <p style={{ color: 'green', margin: 0 }}>Paid</p>;
+                          }
+                          return <p style={{ color: '#6B7280', margin: 0 }}>Added</p>;
+                        })()
                       )}
                     </div>
                   </div>
@@ -225,6 +253,34 @@ const StudentDashboard = ({ user, setUser, handleLogout }) => {
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button onClick={() => setShowPaymentModal(false)} className="btn btn-outline">Cancel</button>
               <button onClick={handleProceedToPay} className="btn btn-primary">Proceed to Pay</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showSuccessModal && (
+        <div style={{ position: 'fixed', inset: 0, backgroundColor: 'rgba(0, 0, 0, 0.45)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="card" style={{ maxWidth: 420, width: '100%' }}>
+            <h2 style={{ fontSize: 22, fontWeight: 'bold', marginBottom: 12 }}>Payment Successful</h2>
+            <p style={{ color: '#6B7280', marginTop: 0 }}>Your proof was submitted and the event status has been updated.</p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
+              <button className="btn btn-primary" onClick={() => setShowSuccessModal(false)}>OK</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showAddedModal && addedItem && (
+        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.4)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <div className="card" style={{ maxWidth: '420px', width: '100%' }}>
+            <h2 style={{ fontSize: '22px', fontWeight: 'bold', marginBottom: '12px' }}>Added to Cart</h2>
+            <div className="card" style={{ padding: '12px', background: '#F9FAFB', border: '1px solid #E5E7EB', boxShadow: 'none' }}>
+              <p style={{ fontWeight: 'bold', margin: 0 }}>{addedItem.title}</p>
+              <p style={{ marginTop: 6, marginBottom: 0 }}>Amount: ₹{addedItem.amount}</p>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 16 }}>
+              <button onClick={() => { setShowAddedModal(false); setAddedItem(null); }} className="btn btn-outline">Close</button>
+              <button onClick={() => { setShowAddedModal(false); navigate('/cart'); }} className="btn btn-primary">Go to Cart</button>
             </div>
           </div>
         </div>

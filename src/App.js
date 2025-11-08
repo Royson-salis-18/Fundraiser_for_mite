@@ -9,8 +9,6 @@ import StudentDashboard from './pages/StudentDashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
-import EventsPage from './pages/EventsPage';
-import ProfilePage from './pages/ProfilePage';
 import SettingsPage from './pages/SettingsPage';
 
 function App() {
@@ -42,6 +40,10 @@ function App() {
     setCart((prev) => prev.filter((i) => i.id !== id));
   };
 
+  const clearCart = () => {
+    setCart([]);
+  };
+
   const handleLogout = () => {
     setIsLoggedIn(false);
     setUser(null);
@@ -56,7 +58,7 @@ function App() {
           
           {/* All other routes */}
           <Route path="/login" element={<LoginPage setIsLoggedIn={setIsLoggedIn} setUser={setUser} />} />
-          <Route path="/student-dashboard" element={<StudentDashboard user={user} setUser={setUser} handleLogout={handleLogout} />} />
+          <Route path="/student-dashboard" element={<StudentDashboard user={user} setUser={setUser} handleLogout={handleLogout} addToCart={addToCart} cartLength={cart.length} />} />
           <Route path="/admin-dashboard" element={<AdminDashboard user={user} setUser={setUser} handleLogout={handleLogout} />} />
           <Route
             path="/cart"
@@ -67,14 +69,14 @@ function App() {
           <Route
             path="/checkout"
             element={user?.role === 'student'
-              ? <CheckoutPage user={user} cart={cart} setUser={setUser} handleLogout={handleLogout} />
+              ? <CheckoutPage user={user} cart={cart} clearCart={clearCart} setUser={setUser} handleLogout={handleLogout} />
               : <Navigate to="/admin-dashboard" replace />}
           />
           <Route
             path="/events"
             element={<Navigate to={user?.role === 'admin' ? '/admin-dashboard' : '/student-dashboard'} replace />}
           />
-          <Route path="/profile" element={<ProfilePage user={user} setUser={setUser} handleLogout={handleLogout} />} />
+          
           <Route path="/settings" element={<SettingsPage user={user} />} />
         </Routes>
       </div>

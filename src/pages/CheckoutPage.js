@@ -55,8 +55,8 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
       setUser(updatedUser);
       clearCart();
       setProcessing(false);
-      navigate('/student-dashboard');
-      alert('Payment successful. Your events are confirmed.');
+      // Navigate to dashboard and trigger success popup there
+      navigate('/student-dashboard', { state: { showPaymentSuccess: true } });
     }, 800);
   };
 
@@ -141,4 +141,3 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
 };
 
 export default CheckoutPage;
-
