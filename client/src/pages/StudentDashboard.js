@@ -10,8 +10,6 @@ import SettingsOverlay from '../components/SettingsOverlay';
 const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  const [selectedPayment, setSelectedPayment] = useState(null);
   const [showAddedModal, setShowAddedModal] = useState(false);
   const [addedItem, setAddedItem] = useState(null);
   const [filter, setFilter] = useState('all');
@@ -77,48 +75,41 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
     return <div style={{ padding: '20px', textAlign: 'center' }}>Error: Missing user data</div>;
   }
 
-  const handlePay = (payment) => {
-    if (!payment || !payment.id || !payment.amount) {
-      console.error('Invalid payment data:', payment);
-      alert('Error: Invalid payment data');
-      return;
-    }
-    setSelectedPayment(payment);
-    setShowPaymentModal(true);
-  };
-
-  const handleProceedToPay = async () => {
-    try {
-      const updatedPayments = { ...user.payments };
-      const eventId = selectedPayment._id || selectedPayment.id;
-      
-      if (selectedPayment.type === 'mandatory') {
-        if (!updatedPayments.mandatory.find(p => (p.id || p._id) === eventId)) {
-          updatedPayments.mandatory.push({ id: eventId, paid: true });
+  const handlePay = async (payment) => {
+    if (!payment || (!payment.id && !payment._id)) return;
+    const eventId = payment._id || payment.id;
+    
+    if (!user?.payments?.mandatory?.find((p) => (p.id || p._id) === eventId)) {
+      try {
+        const updatedPayments = {
+          ...user.payments,
+          mandatory: [...user.payments.mandatory, { id: eventId, paid: false }],
+        };
+        
+        // Save to database
+        const result = await userAPI.updatePayments(updatedPayments);
+        if (result.error) {
+          alert('Failed to add payment: ' + result.error);
+          return;
         }
-      } else {
-        if (!updatedPayments.optional.find(p => (p.id || p._id) === eventId)) {
-          updatedPayments.optional.push({ id: eventId, paid: true });
-        }
-      }
 
-      // Save to database
-      const result = await userAPI.updatePayments(updatedPayments);
-      if (result.error) {
-        alert('Failed to save payment: ' + result.error);
+        // Update local state
+        setUser(prev => ({
+          ...prev,
+          payments: updatedPayments
+        }));
+      } catch (error) {
+        console.error('Failed to add mandatory payment:', error);
+        alert('Failed to add payment. Please try again.');
         return;
       }
-
-      // Update local state
-      setUser(prev => ({
-        ...prev,
-        payments: updatedPayments
-      }));
-      setShowPaymentModal(false);
-    } catch (error) {
-      console.error('Payment error:', error);
-      alert('Failed to process payment. Please try again.');
     }
+    
+    if (typeof addToCart === 'function') {
+      addToCart(payment);
+    }
+    setAddedItem(payment);
+    setShowAddedModal(true);
   };
 
   const handleSelectOptional = async (payment) => {
@@ -339,6 +330,9 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                           if (!paid) {
                             return <button onClick={() => handlePay(payment)} className="btn btn-primary">Pay</button>;
                           }
+                          if (paid.status === 'pending') {
+                            return <p style={{ color: '#F59E0B', margin: 0 }}>Waiting for Confirmation</p>;
+                          }
                           return <p style={{ color: 'green' }}>Paid</p>;
                         })()
                       ) : (
@@ -347,6 +341,9 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                           const opt = user.payments.optional.find((p) => (p.id || p._id)?.toString() === eventId);
                           if (!opt) {
                             return <button onClick={() => handleSelectOptional(payment)} className="btn btn-primary">Add</button>;
+                          }
+                          if (opt.status === 'pending') {
+                            return <p style={{ color: '#F59E0B', margin: 0 }}>Waiting for Confirmation</p>;
                           }
                           if (opt.paid) {
                             return <p style={{ color: 'green', margin: 0 }}>Paid</p>;
@@ -369,31 +366,6 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
       )}
       {showSettings && (
         <SettingsOverlay user={user} onClose={() => setShowSettings(false)} />
-      )}
-
-      {showPaymentModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, width: '100%', height: '100%', backgroundColor: 'rgba(0, 0, 0, 0.5)', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
-          <div className="card" style={{ maxWidth: '420px', width: '100%' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', marginBottom: '20px' }}>Complete Payment</h2>
-            <p style={{ marginBottom: '20px' }}>You will be redirected to Razorpay payment gateway</p>
-            <div className="card" style={{ padding: '16px', background: '#F9FAFB', border: '1px solid #E5E7EB', boxShadow: 'none' }}>
-              <p style={{ fontWeight: 'bold' }}>{selectedPayment.title}</p>
-              <p>Amount: ₹{selectedPayment.amount}</p>
-              <p>Student USN: {user.usn}</p>
-              {selectedPayment.payeeUpiId && (
-                <div style={{ marginTop: 8 }}>
-                  <p style={{ margin: 0 }}>Payee: {selectedPayment.payeeName || '—'}</p>
-                  <p style={{ margin: 0 }}>UPI: <span style={{ fontFamily: 'monospace' }}>{selectedPayment.payeeUpiId}</span></p>
-                </div>
-              )}
-            </div>
-            <p style={{ fontSize: '12px', color: '#6B7280', marginBottom: '20px', textAlign: 'center' }}>This is a demo. In production, you will be redirected to Razorpay's secure payment gateway.</p>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
-              <button onClick={() => setShowPaymentModal(false)} className="btn btn-outline">Cancel</button>
-              <button onClick={handleProceedToPay} className="btn btn-primary">Proceed to Pay</button>
-            </div>
-          </div>
-        </div>
       )}
 
       {showSuccessModal && (

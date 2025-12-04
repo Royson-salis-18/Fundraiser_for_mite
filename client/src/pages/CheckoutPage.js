@@ -25,20 +25,24 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
         const events = await eventsAPI.getAll();
         const paymentsData = await userAPI.getPayments();
         
-        if (paymentsData.payments?.optional) {
-          const selectedOptional = paymentsData.payments.optional
-            .filter(p => !p.paid && p.status !== 'confirmed')
-            .map(payment => {
-              const eventId = (payment.id || payment._id)?.toString();
-              const event = events.find(e => 
-                (e._id?.toString() === eventId) || (e.id?.toString() === eventId)
-              );
-              return event ? { ...event, paymentId: payment.id || payment._id } : null;
-            })
-            .filter(Boolean);
-          
-          setCartItems(selectedOptional);
-        }
+        // Combine both mandatory and optional payments that need proof
+        const allPayments = [
+          ...(paymentsData.payments?.mandatory || []),
+          ...(paymentsData.payments?.optional || [])
+        ];
+        
+        const selectedPayments = allPayments
+          .filter(p => !p.paid && p.status !== 'confirmed')
+          .map(payment => {
+            const eventId = (payment.id || payment._id)?.toString();
+            const event = events.find(e => 
+              (e._id?.toString() === eventId) || (e.id?.toString() === eventId)
+            );
+            return event ? { ...event, paymentId: payment.id || payment._id } : null;
+          })
+          .filter(Boolean);
+        
+        setCartItems(selectedPayments);
       } catch (error) {
         console.error('Failed to load cart:', error);
         setCartItems([]);
@@ -95,15 +99,16 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
         const eventId = (item._id || item.id)?.toString();
         const proof = proofById[eventId] || {};
         
-        // Find and update the payment record
-        const paymentIndex = updatedPayments.optional.findIndex(p => {
+        // Check if it's in mandatory or optional
+        let paymentIndex = updatedPayments.mandatory.findIndex(p => {
           const paidId = (p.id || p._id)?.toString();
           return paidId === eventId;
         });
         
         if (paymentIndex !== -1) {
-          updatedPayments.optional[paymentIndex] = {
-            ...updatedPayments.optional[paymentIndex],
+          // Update mandatory payment
+          updatedPayments.mandatory[paymentIndex] = {
+            ...updatedPayments.mandatory[paymentIndex],
             id: eventId,
             paid: true,
             status: 'pending', // Admin needs to confirm
@@ -112,15 +117,34 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
             paidDate: new Date().toISOString()
           };
         } else {
-          // Add new payment if not found
-          updatedPayments.optional.push({
-            id: eventId,
-            paid: true,
-            status: 'pending',
-            utr: proof.utr || '',
-            screenshot: proof.screenshot || '',
-            paidDate: new Date().toISOString()
+          // Check optional
+          paymentIndex = updatedPayments.optional.findIndex(p => {
+            const paidId = (p.id || p._id)?.toString();
+            return paidId === eventId;
           });
+          
+          if (paymentIndex !== -1) {
+            // Update optional payment
+            updatedPayments.optional[paymentIndex] = {
+              ...updatedPayments.optional[paymentIndex],
+              id: eventId,
+              paid: true,
+              status: 'pending', // Admin needs to confirm
+              utr: proof.utr || '',
+              screenshot: proof.screenshot || '',
+              paidDate: new Date().toISOString()
+            };
+          } else {
+            // Add new payment if not found (shouldn't happen, but just in case)
+            updatedPayments.optional.push({
+              id: eventId,
+              paid: true,
+              status: 'pending',
+              utr: proof.utr || '',
+              screenshot: proof.screenshot || '',
+              paidDate: new Date().toISOString()
+            });
+          }
         }
       }
 
@@ -205,7 +229,9 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
                             <div style={{ fontSize: 12, color: '#6B7280' }}>UPI</div>
                             <div style={{ fontFamily: 'monospace' }}>{i.payeeUpiId}</div>
                           </div>
-                          {buildUpiUrl(i) && (
+                          {i.qrCode ? (
+                            <img src={i.qrCode} alt="Event QR Code" style={{ width: 92, height: 92, borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                          ) : buildUpiUrl(i) && (
                             <img src={buildQrSrc(buildUpiUrl(i))} alt="UPI QR" style={{ width: 92, height: 92, borderRadius: 8, border: '1px solid #E5E7EB' }} />
                           )}
                         </div>

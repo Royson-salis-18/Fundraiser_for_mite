@@ -112,6 +112,11 @@ app.post('/api/auth/register', async (req, res) => {
       return res.status(400).json({ error: 'All fields are required' });
     }
 
+    // Force role to be 'student' - no admin registration allowed
+    if (role && role !== 'student') {
+      return res.status(403).json({ error: 'Only student registration is allowed' });
+    }
+
     // Check if user exists (by USN or email)
     const existingUser = await db.collection('users').findOne({ 
       $or: [

@@ -115,7 +115,6 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
         </div>
         <div style={{ marginTop: 20, textAlign: 'center', color: '#6B7280', fontSize: '14px' }}>
           <p>Use your USN and DOB as password (DDMMYYYY). Example: 1MS21CS001 / 01012003</p>
-          <p>Admin example: admin / 01011990</p>
         </div>
       </div>
     </div>

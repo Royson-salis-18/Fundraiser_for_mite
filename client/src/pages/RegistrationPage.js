@@ -111,19 +111,6 @@ const RegistrationPage = ({ setIsLoggedIn, setUser }) => {
         </div>
         
         <div>
-          <label className="label">Role</label>
-          <select 
-            className="input" 
-            name="role"
-            value={formData.role}
-            onChange={handleChange}
-            disabled={loading}
-            style={{ marginBottom: '15px' }}
-          >
-            <option value="student">Student</option>
-            <option value="admin">Admin</option>
-          </select>
-
           <label className="label">University Seat Number (USN)</label>
           <input 
             className="input" 

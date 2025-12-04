@@ -13,8 +13,12 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [newPayment, setNewPayment] = useState({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '' });
+  const [newPayment, setNewPayment] = useState({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '', qrCode: '' });
   const [createErrors, setCreateErrors] = useState({});
+  const [qrCodePreview, setQrCodePreview] = useState(null);
+  const [editQrCodePreview, setEditQrCodePreview] = useState(null);
+  const [posterPreview, setPosterPreview] = useState(null);
+  const [editPosterPreview, setEditPosterPreview] = useState(null);
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -78,9 +82,45 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
   const optionalEvents = payments.filter((p) => p.type === 'optional');
 
   const handleOpenCreate = () => {
-    setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '' });
+    setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '', qrCode: '' });
     setCreateErrors({});
+    setQrCodePreview(null);
+    setPosterPreview(null);
     setShowCreateModal(true);
+  };
+
+  const handleQrCodeUpload = (e, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      if (isEdit) {
+        setSelectedPayment({ ...selectedPayment, qrCode: dataUrl });
+        setEditQrCodePreview(dataUrl);
+      } else {
+        setNewPayment({ ...newPayment, qrCode: dataUrl });
+        setQrCodePreview(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handlePosterUpload = (e, isEdit = false) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const dataUrl = ev.target.result;
+      if (isEdit) {
+        setSelectedPayment({ ...selectedPayment, poster: dataUrl });
+        setEditPosterPreview(dataUrl);
+      } else {
+        setNewPayment({ ...newPayment, poster: dataUrl });
+        setPosterPreview(dataUrl);
+      }
+    };
+    reader.readAsDataURL(file);
   };
 
   const validateNew = () => {
@@ -114,7 +154,9 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
       setShowCreateModal(false);
       
       // Reset form
-      setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '' });
+      setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '', qrCode: '' });
+      setQrCodePreview(null);
+      setPosterPreview(null);
     } catch (error) {
       console.error('Create error:', error);
       alert('Failed to create event. Please try again.');
@@ -234,8 +276,13 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
               <textarea className="textarea" value={selectedPayment?.description || ''} onChange={(e) => setSelectedPayment({ ...selectedPayment, description: e.target.value })} />
             </div>
             <div className="field">
-              <label className="label">Poster URL (optional)</label>
-              <input className="input" type="text" value={selectedPayment?.poster || ''} onChange={(e) => setSelectedPayment({ ...selectedPayment, poster: e.target.value })} />
+              <label className="label">Poster Image (optional)</label>
+              <input className="input" type="file" accept="image/*" onChange={(e) => handlePosterUpload(e, true)} />
+              {(editPosterPreview || selectedPayment?.poster) && (
+                <div style={{ marginTop: 12 }}>
+                  <img src={editPosterPreview || selectedPayment?.poster} alt="Poster Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
               <div style={{ flex: 1 }}>
@@ -259,6 +306,15 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
                 </div>
               </div>
             )}
+            <div className="field">
+              <label className="label">QR Code Image (optional)</label>
+              <input className="input" type="file" accept="image/*" onChange={(e) => handleQrCodeUpload(e, true)} />
+              {(editQrCodePreview || selectedPayment?.qrCode) && (
+                <div style={{ marginTop: 12 }}>
+                  <img src={editQrCodePreview || selectedPayment?.qrCode} alt="QR Code Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button onClick={() => setShowEditModal(false)} className="btn btn-outline">Cancel</button>
               <button onClick={handleUpdateEvent} className="btn btn-primary">Save</button>
@@ -289,8 +345,13 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
               <textarea className="textarea" value={newPayment.description} onChange={(e) => setNewPayment({ ...newPayment, description: e.target.value })} />
             </div>
             <div className="field">
-              <label className="label">Poster URL (optional)</label>
-              <input className="input" type="text" value={newPayment.poster} onChange={(e) => setNewPayment({ ...newPayment, poster: e.target.value })} />
+              <label className="label">Poster Image (optional)</label>
+              <input className="input" type="file" accept="image/*" onChange={(e) => handlePosterUpload(e, false)} />
+              {posterPreview && (
+                <div style={{ marginTop: 12 }}>
+                  <img src={posterPreview} alt="Poster Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                </div>
+              )}
             </div>
             <div style={{ display: 'flex', gap: '20px', marginBottom: '15px' }}>
               <div style={{ flex: 1 }}>
@@ -318,6 +379,15 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
                 </div>
               </div>
             )}
+            <div className="field">
+              <label className="label">QR Code Image (optional)</label>
+              <input className="input" type="file" accept="image/*" onChange={(e) => handleQrCodeUpload(e, false)} />
+              {qrCodePreview && (
+                <div style={{ marginTop: 12 }}>
+                  <img src={qrCodePreview} alt="QR Code Preview" style={{ maxWidth: '100%', maxHeight: '200px', borderRadius: 8, border: '1px solid #E5E7EB' }} />
+                </div>
+              )}
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 12 }}>
               <button onClick={() => setShowCreateModal(false)} className="btn btn-outline">Cancel</button>
               <button onClick={handleCreateEvent} className="btn btn-primary">Create</button>
