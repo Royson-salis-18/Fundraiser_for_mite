@@ -6,6 +6,7 @@ services:
   - type: web
     name: fundraiser-app
     env: node
+    plan: free  # Use free tier
     rootDir: .
     buildCommand: cd client && npm install && npm run build && cd ../backend && npm install
     startCommand: cd backend && node server.js

@@ -4,10 +4,8 @@
   "description": "Fundraiser React Application with Backend",
   "scripts": {
     "install-all": "cd backend && npm install && cd ../client && npm install",
-    "build": "cd client && npm install && npm run build",
     "start": "cd backend && node server.js",
-    "dev": "concurrently \"cd backend && npm run dev\" \"cd client && npm start\"",
-    "build-and-start": "npm run build && npm start"
+    "dev": "concurrently \"cd backend && npm run dev\" \"cd client && npm start\""
   },
   "keywords": [],
   "author": "",
@@ -16,4 +14,3 @@
     "concurrently": "^8.2.2"
   }
 }
-

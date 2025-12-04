@@ -1,3 +1,5 @@
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+
 # Environment variables
 .env
 .env.local
@@ -9,10 +11,17 @@ backend/.env.local
 
 # Dependencies
 node_modules/
+/node_modules
+/.pnp
+.pnp.js
 backend/node_modules/
 client/node_modules/
 
-# Build outputs
+# Testing
+/coverage
+
+# Production / Build outputs
+/build
 build/
 dist/
 client/build/
@@ -37,4 +46,3 @@ Thumbs.db
 # Misc
 *.pem
 *.key
-
