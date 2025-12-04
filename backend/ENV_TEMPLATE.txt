@@ -1,0 +1,20 @@
+# Copy this file to .env and fill in your values
+# NEVER commit .env to git!
+
+# MongoDB Connection String
+# Get this from MongoDB Atlas: https://cloud.mongodb.com
+MONGODB_URI=your_mongodb_connection_string_here
+
+# JWT Secret Key
+# Generate with: node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"
+JWT_SECRET=your_jwt_secret_key_here
+
+# Server Port (optional, defaults to 5000)
+PORT=5000
+
+# Frontend URL for CORS (production - set after deploying frontend)
+FRONTEND_URL=https://your-frontend-app.onrender.com
+
+# Node Environment
+NODE_ENV=development
+
