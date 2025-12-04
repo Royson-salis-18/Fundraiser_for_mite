@@ -337,14 +337,17 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                       {payment.type === 'mandatory' ? (
                         (() => {
                           const eventId = (payment._id || payment.id)?.toString();
-                          const paid = user.payments.mandatory.find((p) => (p.id || p._id)?.toString() === eventId);
-                          if (!paid) {
+                          const paymentRecord = user.payments.mandatory.find((p) => (p.id || p._id)?.toString() === eventId);
+                          if (!paymentRecord) {
                             return <button onClick={() => handlePay(payment)} className="btn btn-primary">Pay</button>;
                           }
-                          if (paid.status === 'pending') {
+                          if (paymentRecord.status === 'pending') {
                             return <p style={{ color: '#F59E0B', margin: 0 }}>Waiting for Confirmation</p>;
                           }
-                          return <p style={{ color: 'green' }}>Paid</p>;
+                          if (paymentRecord.status === 'confirmed' || paymentRecord.paid) {
+                            return <p style={{ color: 'green' }}>Paid</p>;
+                          }
+                          return <p style={{ color: '#3B82F6' }}>Added to Cart</p>;
                         })()
                       ) : (
                         (() => {
