@@ -1,0 +1,21 @@
+# Render Blueprint for Single-Service Deployment
+# This file allows you to deploy everything in one click on Render
+# Just connect your GitHub repo and Render will read this file!
+
+services:
+  - type: web
+    name: fundraiser-app
+    env: node
+    rootDir: .
+    buildCommand: cd client && npm install && npm run build && cd ../backend && npm install
+    startCommand: cd backend && node server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: MONGODB_URI
+        sync: false  # You'll need to set this manually in Render dashboard
+      - key: JWT_SECRET
+        sync: false  # You'll need to set this manually in Render dashboard
+      - key: PORT
+        value: 10000
+
