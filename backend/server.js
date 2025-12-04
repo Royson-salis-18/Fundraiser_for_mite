@@ -965,59 +965,63 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
                       event = eventMap.get(objId.toString());
                     } catch (e) {
                       // Ignore conversion errors
-            }
-          }
-          
-          // If still not found, try matching against all events
-          if (!event) {
-            event = allEvents.find(e => {
-              const eventIdStr = e._id.toString();
-              return (
-                eventIdStr === paymentId ||
-                (payment._id && eventIdStr === payment._id.toString()) ||
-                (payment.id && eventIdStr === payment.id.toString()) ||
-                (e.id && e.id.toString() === paymentId)
-              );
-            });
-            
-            if (!event) {
-              unmatchedPayments++;
-              console.log(`⚠️  Could not find event for optional payment. Student: ${student.usn || studentIndex}, Payment ID: ${paymentId}, Payment:`, JSON.stringify({
-                _id: payment._id,
-                id: payment.id,
-                paid: payment.paid,
-                status: payment.status
-              }, null, 2));
-            }
-          }
-        }
-        
-        if (event) {
-          // Include all event details in the response
-          pendingPayments.push({
-            studentId: student._id.toString(),
-            studentUSN: student.usn || 'N/A',
-            studentName: student.name || 'N/A',
-            studentEmail: student.email || 'N/A',
-            eventId: event._id.toString(),
-            eventTitle: event.title || 'Untitled Event',
-            eventType: 'optional',
-            eventAmount: event.amount || 0,
-            eventDescription: event.description || '',
-            eventTargetClass: event.targetClass || '',
-            eventPayeeName: event.payeeName || '',
-            eventPayeeUpiId: event.payeeUpiId || '',
-            eventQrCode: event.qrCode || null,
-            eventPoster: event.poster || null,
-            paymentId: paymentId || 'unknown',
-            utr: payment.utr || 'N/A',
-            screenshot: payment.screenshot || null,
-            paidDate: payment.paidDate || null,
-            status: payment.status || 'pending',
-            _event: event // Include full event object for debugging
-          });
-          console.log(`✅ Matched optional payment: Student ${student.usn || studentIndex}, Event: ${event.title}, Payment ID: ${paymentId}`);
-    });
+                    }
+                  }
+                  
+                  // If still not found, try matching against all events
+                  if (!event) {
+                    event = allEvents.find(e => {
+                      const eventIdStr = e._id.toString();
+                      return (
+                        eventIdStr === paymentId ||
+                        (payment._id && eventIdStr === payment._id.toString()) ||
+                        (payment.id && eventIdStr === payment.id.toString()) ||
+                        (e.id && e.id.toString() === paymentId)
+                      );
+                    });
+                  }
+                }
+                
+                if (event) {
+                  // Include all event details in the response
+                  pendingPayments.push({
+                    studentId: student._id.toString(),
+                    studentUSN: student.usn || 'N/A',
+                    studentName: student.name || 'N/A',
+                    studentEmail: student.email || 'N/A',
+                    eventId: event._id.toString(),
+                    eventTitle: event.title || 'Untitled Event',
+                    eventType: 'optional',
+                    eventAmount: event.amount || 0,
+                    eventDescription: event.description || '',
+                    eventTargetClass: event.targetClass || '',
+                    eventPayeeName: event.payeeName || '',
+                    eventPayeeUpiId: event.payeeUpiId || '',
+                    eventQrCode: event.qrCode || null,
+                    eventPoster: event.poster || null,
+                    paymentId: paymentId || 'unknown',
+                    utr: payment.utr || 'N/A',
+                    screenshot: payment.screenshot || null,
+                    paidDate: payment.paidDate || null,
+                    status: payment.status || 'pending',
+                    _event: event // Include full event object for debugging
+                  });
+                  console.log(`✅ Matched optional payment: Student ${student.usn || studentIndex}, Event: ${event.title}, Payment ID: ${paymentId}`);
+                } else {
+                  unmatchedPayments++;
+                  console.log(`⚠️  Could not find event for optional payment. Student: ${student.usn || studentIndex}, Payment ID: ${paymentId}, Payment:`, JSON.stringify({
+                    _id: payment._id,
+                    id: payment.id,
+                    paid: payment.paid,
+                    status: payment.status
+                  }, null, 2));
+                }
+              } // End if (isPending)
+            } // End if (isPaid)
+          }); // End forEach optional payment
+        } // End if (student.payments.optional)
+      } // End if (student.payments)
+    }); // End allStudents.forEach
 
     console.log(`📈 Statistics:`);
     console.log(`   Total payments checked: ${totalPaymentsChecked}`);
