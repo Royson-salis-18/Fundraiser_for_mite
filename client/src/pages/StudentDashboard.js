@@ -77,39 +77,46 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
 
   const handlePay = async (payment) => {
     if (!payment || (!payment.id && !payment._id)) return;
-    const eventId = payment._id || payment.id;
     
-    if (!user?.payments?.mandatory?.find((p) => (p.id || p._id) === eventId)) {
-      try {
-        const updatedPayments = {
-          ...user.payments,
-          mandatory: [...user.payments.mandatory, { id: eventId, paid: false }],
-        };
-        
-        // Save to database
-        const result = await userAPI.updatePayments(updatedPayments);
-        if (result.error) {
-          alert('Failed to add payment: ' + result.error);
+    // Add to cart instead of marking as paid
+    if (typeof addToCart === 'function') {
+      // First ensure the payment is in the user's mandatory payments
+      const eventId = payment._id || payment.id;
+      if (!user?.payments?.mandatory?.find((p) => (p.id || p._id) === eventId)) {
+        try {
+          const updatedPayments = {
+            ...user.payments,
+            mandatory: [...(user.payments?.mandatory || []), { 
+              id: eventId, 
+              paid: false,
+              status: 'added' // Add status field
+            }],
+          };
+          
+          // Save to database
+          const result = await userAPI.updatePayments(updatedPayments);
+          if (result.error) {
+            alert('Failed to add payment: ' + result.error);
+            return;
+          }
+
+          // Update local state
+          setUser(prev => ({
+            ...prev,
+            payments: updatedPayments
+          }));
+        } catch (error) {
+          console.error('Failed to add mandatory payment:', error);
+          alert('Failed to add payment. Please try again.');
           return;
         }
-
-        // Update local state
-        setUser(prev => ({
-          ...prev,
-          payments: updatedPayments
-        }));
-      } catch (error) {
-        console.error('Failed to add mandatory payment:', error);
-        alert('Failed to add payment. Please try again.');
-        return;
       }
-    }
-    
-    if (typeof addToCart === 'function') {
+      
+      // Add to cart
       addToCart(payment);
+      setAddedItem(payment);
+      setShowAddedModal(true);
     }
-    setAddedItem(payment);
-    setShowAddedModal(true);
   };
 
   const handleSelectOptional = async (payment) => {
@@ -120,7 +127,11 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
       try {
         const updatedPayments = {
           ...user.payments,
-          optional: [...user.payments.optional, { id: eventId, paid: false }],
+          optional: [...(user.payments.optional || []), { 
+            id: eventId, 
+            paid: false,
+            status: 'added' // Add status field
+          }],
         };
         
         // Save to database

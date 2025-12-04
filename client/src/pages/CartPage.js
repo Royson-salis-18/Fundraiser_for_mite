@@ -13,33 +13,37 @@ const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
 
-  // Load cart from database (optional events that are selected but not paid)
+  // Load cart from database (both mandatory and optional events that are not paid)
   useEffect(() => {
     const loadCart = async () => {
       if (!user?.id || !user?.payments) return;
       
       try {
         setLoading(true);
-        // Get all events
         const events = await eventsAPI.getAll();
-        // Get user payments
         const paymentsData = await userAPI.getPayments();
         
-        if (paymentsData.payments?.optional) {
-          // Find optional events that are selected but not paid
-          const selectedOptional = paymentsData.payments.optional
-            .filter(p => !p.paid && p.status !== 'confirmed')
-            .map(payment => {
-              const eventId = (payment.id || payment._id)?.toString();
-              const event = events.find(e => 
-                (e._id?.toString() === eventId) || (e.id?.toString() === eventId)
-              );
-              return event ? { ...event, paymentId: payment.id || payment._id } : null;
-            })
-            .filter(Boolean);
-          
-          setCartItems(selectedOptional);
-        }
+        // Combine both mandatory and optional payments that need payment
+        const allPayments = [
+          ...(paymentsData.payments?.mandatory || []).filter(p => !p.paid && p.status !== 'confirmed'),
+          ...(paymentsData.payments?.optional || []).filter(p => !p.paid && p.status !== 'confirmed')
+        ];
+        
+        const selectedPayments = allPayments
+          .map(payment => {
+            const eventId = (payment.id || payment._id)?.toString();
+            const event = events.find(e => 
+              (e._id?.toString() === eventId) || (e.id?.toString() === eventId)
+            );
+            return event ? { 
+              ...event, 
+              paymentId: payment.id || payment._id, 
+              isMandatory: payment.type === 'mandatory' || payment.isMandatory
+            } : null;
+          })
+          .filter(Boolean);
+        
+        setCartItems(selectedPayments);
       } catch (error) {
         console.error('Failed to load cart:', error);
         setCartItems([]);
@@ -107,7 +111,7 @@ const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
         subtitle={user?.usn ? `USN: ${user.usn}` : undefined}
         titleTo={'/student-dashboard'}
         links={[
-          { to: '/cart', label: `Cart (${cartLength})` },
+          { to: '/student-dashboard', label: 'Dashboard' },
         ]}
         extraRight={(
           <>
@@ -131,20 +135,97 @@ const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
           <div>
             {cartItems.map((item) => {
               const itemId = (item._id || item.id)?.toString();
+              const isMandatory = item.type === 'mandatory' || item.isMandatory;
+              
               return (
-                <div key={itemId} className="card" style={{ display: 'flex', gap: 16, padding: 12, marginBottom: 12 }}>
-                  {item.poster && (
-                    <img src={item.poster} alt={item.title} style={{ width: 96, height: 64, objectFit: 'cover', borderRadius: 6 }} />
-                  )}
-                  <div style={{ flex: 1 }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <h3 style={{ margin: 0 }}>{item.title}</h3>
-                      <strong>₹{item.amount}</strong>
-                    </div>
-                    {item.description && (
-                      <p style={{ color: '#6B7280', fontSize: '14px', margin: '8px 0' }}>{item.description}</p>
+                <div 
+                  key={itemId} 
+                  className="card" 
+                  style={{ 
+                    padding: 16, 
+                    marginBottom: 16,
+                    borderLeft: `4px solid ${isMandatory ? '#EF4444' : '#3B82F6'}`
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start' }}>
+                    {item.poster && (
+                      <img 
+                        src={item.poster} 
+                        alt={item.title} 
+                        style={{ 
+                          width: 120, 
+                          height: 80, 
+                          objectFit: 'cover', 
+                          borderRadius: 6,
+                          border: '1px solid #E5E7EB'
+                        }} 
+                      />
                     )}
-                    <button onClick={() => handleRemoveFromCart(itemId)} className="btn btn-outline" style={{ marginTop: 8 }}>Remove</button>
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 12 }}>
+                        <div>
+                          <h3 style={{ 
+                            margin: 0, 
+                            marginBottom: 8,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 8
+                          }}>
+                            {item.title}
+                            {isMandatory && (
+                              <span style={{
+                                fontSize: 12,
+                                background: '#FEE2E2',
+                                color: '#B91C1C',
+                                padding: '2px 8px',
+                                borderRadius: 4,
+                                fontWeight: 500
+                              }}>
+                                Mandatory
+                              </span>
+                            )}
+                          </h3>
+                          {item.description && (
+                            <p style={{ 
+                              color: '#6B7280', 
+                              fontSize: '14px', 
+                              margin: '8px 0',
+                              display: '-webkit-box',
+                              WebkitLineClamp: 2,
+                              WebkitBoxOrient: 'vertical',
+                              overflow: 'hidden',
+                              textOverflow: 'ellipsis'
+                            }}>
+                              {item.description}
+                            </p>
+                          )}
+                        </div>
+                        <div style={{ textAlign: 'right' }}>
+                          <strong style={{ fontSize: '18px', color: '#1F2937' }}>₹{item.amount}</strong>
+                        </div>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12 }}>
+                        <span style={{ 
+                          fontSize: '14px', 
+                          color: isMandatory ? '#B91C1C' : '#1D4ED8',
+                          fontWeight: 500
+                        }}>
+                          {isMandatory ? 'Required Payment' : 'Optional Event'}
+                        </span>
+                        <button 
+                          onClick={() => handleRemoveFromCart(itemId)} 
+                          className="btn btn-outline" 
+                          style={{ 
+                            padding: '6px 12px',
+                            fontSize: '14px',
+                            borderColor: isMandatory ? '#FCA5A5' : '#93C5FD',
+                            color: isMandatory ? '#B91C1C' : '#1D4ED8'
+                          }}
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               );

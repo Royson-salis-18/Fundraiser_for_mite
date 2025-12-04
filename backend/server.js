@@ -895,6 +895,7 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
                 }
                 
                 if (event) {
+                  // Include all event details in the response
                   pendingPayments.push({
                     studentId: student._id.toString(),
                     studentUSN: student.usn || 'N/A',
@@ -904,11 +905,18 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
                     eventTitle: event.title || 'Untitled Event',
                     eventType: 'mandatory',
                     eventAmount: event.amount || 0,
+                    eventDescription: event.description || '',
+                    eventTargetClass: event.targetClass || '',
+                    eventPayeeName: event.payeeName || '',
+                    eventPayeeUpiId: event.payeeUpiId || '',
+                    eventQrCode: event.qrCode || null,
+                    eventPoster: event.poster || null,
                     paymentId: paymentId || 'unknown',
                     utr: payment.utr || 'N/A',
                     screenshot: payment.screenshot || null,
                     paidDate: payment.paidDate || null,
-                    status: payment.status || 'pending'
+                    status: payment.status || 'pending',
+                    _event: event // Include full event object for debugging
                   });
                   console.log(`✅ Matched mandatory payment: Student ${student.usn || studentIndex}, Event: ${event.title}, Payment ID: ${paymentId}`);
                 } else {
@@ -969,32 +977,6 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
                         (payment._id && eventIdStr === payment._id.toString()) ||
                         (payment.id && eventIdStr === payment.id.toString()) ||
                         (e.id && e.id.toString() === paymentId)
-                      );
-                    });
-                  }
-                }
-                
-                if (event) {
-                  pendingPayments.push({
-                    studentId: student._id.toString(),
-                    studentUSN: student.usn || 'N/A',
-                    studentName: student.name || 'N/A',
-                    studentEmail: student.email || 'N/A',
-                    eventId: event._id.toString(),
-                    eventTitle: event.title || 'Untitled Event',
-                    eventType: 'optional',
-                    eventAmount: event.amount || 0,
-                    paymentId: paymentId || 'unknown',
-                    utr: payment.utr || 'N/A',
-                    screenshot: payment.screenshot || null,
-                    paidDate: payment.paidDate || null,
-                    status: payment.status || 'pending'
-                  });
-                  console.log(`✅ Matched optional payment: Student ${student.usn || studentIndex}, Event: ${event.title}, Payment ID: ${paymentId}`);
-                } else {
-                  unmatchedPayments++;
-                  console.log(`⚠️  Could not find event for optional payment. Student: ${student.usn || studentIndex}, Payment ID: ${paymentId}, Payment:`, JSON.stringify({
-                    _id: payment._id,
                     id: payment.id,
                     paid: payment.paid,
                     status: payment.status
@@ -1024,72 +1006,115 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
 app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
   console.log('🔍 PUT /api/admin/confirm-payment - Route hit');
   console.log('🔍 Request body:', req.body);
+  
+  const session = client.startSession();
+  session.startTransaction();
+  
   try {
     if (req.user.role !== 'admin') {
       console.log('❌ Access denied - not admin');
+      await session.abortTransaction();
+      session.endSession();
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const { studentId, paymentId, status, eventType } = req.body; // status: 'confirmed' or 'rejected'
+    const { studentId, paymentId, status, eventType } = req.body;
     console.log('🔍 Processing confirmation:', { studentId, paymentId, status, eventType });
 
     if (!studentId || !paymentId || !status || !eventType) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ error: 'Missing required fields' });
     }
 
     if (!['confirmed', 'rejected'].includes(status)) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(400).json({ error: 'Invalid status. Must be "confirmed" or "rejected"' });
     }
 
-    const student = await db.collection('users').findOne({ _id: new ObjectId(studentId) });
+    // Find the student with session
+    const student = await db.collection('users').findOne(
+      { _id: new ObjectId(studentId) },
+      { session }
+    );
 
     if (!student || !student.payments) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ error: 'Student or payment not found' });
     }
 
-    const paymentArray = eventType === 'mandatory' ? student.payments.mandatory : student.payments.optional;
+    // Make a deep copy of the payments to avoid modifying the original
+    const updatedPayments = JSON.parse(JSON.stringify(student.payments));
+    const paymentArray = eventType === 'mandatory' ? updatedPayments.mandatory : updatedPayments.optional;
+    
+    // Find the payment to update
     const paymentIndex = paymentArray.findIndex(p => 
       (p._id && p._id.toString() === paymentId) || 
       (p.id && p.id.toString() === paymentId)
     );
 
     if (paymentIndex === -1) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ error: 'Payment not found' });
     }
 
-    // Update payment status
+    // Update payment status and timestamps
+    const now = new Date();
     paymentArray[paymentIndex].status = status;
+    paymentArray[paymentIndex].updatedAt = now;
+    
     if (status === 'confirmed') {
-      paymentArray[paymentIndex].confirmedAt = new Date();
+      paymentArray[paymentIndex].confirmedAt = now;
       paymentArray[paymentIndex].confirmedBy = req.user.id;
+      paymentArray[paymentIndex].paid = true;
     } else if (status === 'rejected') {
-      paymentArray[paymentIndex].rejectedAt = new Date();
+      paymentArray[paymentIndex].rejectedAt = now;
       paymentArray[paymentIndex].rejectedBy = req.user.id;
+      paymentArray[paymentIndex].paid = false;
     }
 
-    // Update student document
+    // Update the student document with the modified payments
     const result = await db.collection('users').updateOne(
       { _id: new ObjectId(studentId) },
       { 
         $set: { 
-          payments: student.payments,
-          updatedAt: new Date()
+          'payments.mandatory': updatedPayments.mandatory,
+          'payments.optional': updatedPayments.optional,
+          updatedAt: now
         }
-      }
+      },
+      { session }
     );
 
     if (result.matchedCount === 0) {
+      await session.abortTransaction();
+      session.endSession();
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    // If we got here, commit the transaction
+    await session.commitTransaction();
+    session.endSession();
+
     console.log('✅ Payment status updated successfully');
     res.json({ 
+      success: true,
       message: `Payment ${status} successfully`,
       payment: paymentArray[paymentIndex]
     });
   } catch (error) {
+    // If an error occurred, abort the transaction
+    await session.abortTransaction();
+    session.endSession();
+    
     console.error('❌ Confirm payment error:', error);
-    res.status(500).json({ error: 'Failed to confirm payment: ' + error.message });
+    res.status(500).json({ 
+      success: false,
+      error: 'Failed to confirm payment: ' + error.message 
+    });
   }
 });
 
