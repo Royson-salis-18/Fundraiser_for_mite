@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useHighlights, ComingUp } from '../components/hype';
 import { authAPI } from '../services/api';
 import appLogo from '../1630654323517.jpg';
 import loginBg from '../Wallpaper para cll.jpg';
@@ -10,6 +11,7 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { list: upcoming } = useHighlights();
 
   const handleLogin = async () => {
     setError('');
@@ -78,6 +80,7 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
             <li><strong>Verified by the fest team</strong><span>Every payment is reviewed and confirmed by an administrator.</span></li>
             <li><strong>Instant receipts</strong><span>Printable receipts with a unique number for each payment.</span></li>
           </ul>
+          <ComingUp items={upcoming} />
         </div>
       </aside>
       <div className="login-form-side">

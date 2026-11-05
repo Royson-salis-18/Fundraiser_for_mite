@@ -4,6 +4,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { eventsAPI, userAPI } from '../services/api';
 import { StatCard, StatusBadge, EmptyState, Skeleton, money } from '../components/ui';
 import { greeting, Ring, CoverArt } from '../components/flair';
+import { useHighlights, useNow, Spotlight, HypeBadges } from '../components/hype';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -18,6 +19,8 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
   const [addedItem, setAddedItem] = useState(null);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
+  const { list: highlights, byId: hlById } = useHighlights();
+  const nowTick = useNow(60000);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -288,6 +291,8 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
         {loading && (<><div className="stat-grid"><Skeleton height={92} count={4} /></div><Skeleton height={260} /></>)}
         {!loading && (
         <>
+        <Spotlight items={highlights} />
+
         <section className="hero fade-up">
           <div className="hero-copy">
             <span className="eyebrow">{greeting()}</span>
@@ -335,6 +340,7 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                       <span className={`badge ${payment.type === 'mandatory' ? 'badge-info' : 'badge-muted'}`} style={{ textTransform: 'capitalize' }}>{payment.type}</span>
                       {rec && <StatusBadge status={status} />}
                     </div>
+                    <HypeBadges h={hlById.get(eventId)} now={nowTick} />
                     <h3><Link to={`/events/${eventId}`} className="card-link">{payment.title}</Link></h3>
                     <p style={{ color: '#6B7280', margin: 0 }}>{payment.tagline || payment.description}</p>
                     <Link to={`/events/${eventId}`} className="more-link">Details and cost breakdown</Link>

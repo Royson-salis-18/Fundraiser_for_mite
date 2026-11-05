@@ -39,7 +39,7 @@ function project(doc, projection) {
   const excl = Object.entries(projection).filter(([, v]) => v === 0).map(([k]) => k);
   const incl = Object.entries(projection).filter(([, v]) => v === 1).map(([k]) => k);
   if (excl.length) { excl.forEach((k) => delete out[k]); return out; }
-  if (incl.length) return Object.fromEntries(Object.entries(out).filter(([k]) => k === '_id' || incl.includes(k)));
+  if (incl.length) return Object.fromEntries(Object.entries(out).filter(([k]) => k === '_id' || incl.some((i) => i === k || i.startsWith(`${k}.`))));
   return out;
 }
 

@@ -9,6 +9,7 @@ const rateLimit = require('express-rate-limit');
 const { computeFee, getFeePercent } = require('./fees');
 const { buildAnalytics } = require('./analytics');
 const { withSanitizedDetails } = require('./eventDetails');
+const { buildHighlights } = require('./hype');
 
 // ---- Password helpers: bcrypt hashes; legacy plaintext values are upgraded on next login ----
 const isBcryptHash = (v) => typeof v === 'string' && /^\$2[aby]\$\d{2}\$/.test(v);
@@ -1277,6 +1278,20 @@ app.get('/api/admin/analytics', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('Analytics error:', error);
     res.status(500).json({ error: 'Failed to build analytics: ' + error.message });
+  }
+});
+
+// Public, aggregate-only highlights used to promote upcoming events (login page and dashboards)
+app.get('/api/public/highlights', async (req, res) => {
+  try {
+    const [events, users] = await Promise.all([
+      db.collection('events').find({}, { projection: { poster: 0, qrCode: 0, budget: 0, schedule: 0, overview: 0 } }).toArray(),
+      db.collection('users').find({ role: 'student' }, { projection: { role: 1, 'payments.mandatory.id': 1, 'payments.mandatory.status': 1, 'payments.mandatory.paidDate': 1, 'payments.optional.id': 1, 'payments.optional.status': 1, 'payments.optional.paidDate': 1 } }).toArray()
+    ]);
+    res.set('Cache-Control', 'public, max-age=30');
+    res.json({ highlights: buildHighlights(events, users) });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load highlights' });
   }
 });
 

@@ -47,6 +47,10 @@ A fundraising application for MITE (Mangalore Institute of Technology and Engine
    npm run dev
    ```
 
+## Event hype
+
+Dashboards open with a rotating spotlight of the next events with a live countdown. Event cards and pages carry honest urgency and social-proof badges (closing soon, trending, N joined this week, starts in N days); each badge appears only when the underlying number supports it. The login page lists upcoming events. API: `GET /api/public/highlights` (public, aggregate counts only, no student data).
+
 ## Reports and analytics (admin)
 
 `/admin-analytics` shows who has paid and who has not, derived from each student's USN (for example `4MT22CS001` is the 2022 batch, CS branch):
@@ -88,7 +92,7 @@ Open http://localhost:5000. Demo logins: admin `admin` / `01011990`; student `4M
 ## Tests
 
 ```bash
-cd backend && node --test fees.test.js analytics.test.js eventDetails.test.js
+cd backend && node --test fees.test.js analytics.test.js eventDetails.test.js hype.test.js
 ```
 
 ## Security notes

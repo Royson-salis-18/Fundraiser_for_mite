@@ -9,6 +9,7 @@ import { StatusBadge, Skeleton, EmptyState, money } from '../components/ui';
 import { useToast } from '../components/Toast';
 import { adminLinks, studentLinks } from '../components/navLinks';
 import { eventsAPI, userAPI } from '../services/api';
+import { useHighlights, useNow, Countdown, HypeBadges, badgesFor } from '../components/hype';
 import appLogo from '../1630654323517.jpg';
 
 const CAT_COLORS = ['#F58220', '#7FA6F5', '#2DD4BF', '#A78BFA', '#FB7185', '#FBBF24', '#E879F9', '#94A3B8'];
@@ -31,6 +32,8 @@ const EventDetailsPage = ({ user, setUser, handleLogout, addToCart, cartLength }
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const isAdmin = user?.role === 'admin';
+  const { byId: hlById } = useHighlights();
+  const now = useNow(1000);
 
   useEffect(() => {
     let alive = true;
@@ -89,6 +92,9 @@ const EventDetailsPage = ({ user, setUser, handleLogout, addToCart, cartLength }
   };
 
   const left = event ? daysLeft(event.deadline) : null;
+  const hl = event ? hlById.get(String(event._id)) : null;
+  const startMs = event?.startDate ? new Date(event.startDate).getTime() : 0;
+  const hot = hl ? badgesFor(hl, now).find((b) => b.tone === 'hot') : null;
   const nav = isAdmin ? adminLinks : studentLinks(cartLength);
 
   return (
@@ -109,8 +115,12 @@ const EventDetailsPage = ({ user, setUser, handleLogout, addToCart, cartLength }
               {event.poster ? <img className="event-hero-img" src={event.poster} alt={event.title} /> : <CoverArt title={event.title} type={event.type} />}
               <div className="event-hero-body">
                 <span className={`badge ${event.type === 'mandatory' ? 'badge-info' : 'badge-muted'}`} style={{ textTransform: 'capitalize' }}>{event.type}</span>
+                <HypeBadges h={hl} now={now} />
                 <h2>{event.title}</h2>
                 {event.tagline && <p className="tagline">{event.tagline}</p>}
+                {startMs > now && (
+                  <div className="event-cd"><span className="spot-cd-label">Starts in</span><Countdown to={event.startDate} now={now} /></div>
+                )}
                 <div className="facts">
                   {event.startDate && <div className="fact"><Icon name="calendar" size={18} /><div><span>When</span><b>{fmtDate(event.startDate)}</b></div></div>}
                   {event.venue && <div className="fact"><Icon name="building" size={18} /><div><span>Where</span><b>{event.venue}</b></div></div>}
@@ -182,8 +192,12 @@ const EventDetailsPage = ({ user, setUser, handleLogout, addToCart, cartLength }
 
               <aside className="detail-side">
                 <div className="panel sticky">
+                  {hot && <div className="urgent">{hot.text}. Secure your spot now.</div>}
                   <span className="stat-label">Your registration</span>
                   <div className="price big">{money(event.amount)}</div>
+                  {hl && hl.joined > 0 && (
+                    <div className="proof"><strong>{hl.joined}</strong><span>student{hl.joined === 1 ? ' is' : 's are'} already in{hl.recent > 0 ? `, ${hl.recent} joined this week` : ''}</span></div>
+                  )}
                   {isAdmin ? (
                     <>
                       <p className="muted-sm">You are viewing this as an administrator.</p>

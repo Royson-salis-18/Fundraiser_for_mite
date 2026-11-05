@@ -277,3 +277,18 @@ export const configAPI = {
     }
   },
 };
+
+
+// Public, aggregate-only event highlights for promotion (no login required)
+export const publicAPI = {
+  getHighlights: async () => {
+    try {
+      const response = await fetch(`${API_URL}/public/highlights`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return Array.isArray(data.highlights) ? data.highlights : [];
+    } catch {
+      return [];
+    }
+  },
+};

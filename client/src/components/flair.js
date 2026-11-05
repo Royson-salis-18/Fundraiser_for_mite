@@ -46,9 +46,10 @@ const PALETTES = [
   ['#12306B', '#2A5BB5'], ['#C85F00', '#F58220'], ['#0F766E', '#2DD4BF'],
   ['#5B21B6', '#8B5CF6'], ['#9F1239', '#FB7185'], ['#1E3A8A', '#38BDF8'],
 ];
+export const paletteFor = (title = '') => PALETTES[[...title].reduce((s, ch) => s + ch.charCodeAt(0), 0) % PALETTES.length];
 export const CoverArt = ({ title = '', type }) => {
   const seed = [...title].reduce((s, ch) => s + ch.charCodeAt(0), 0);
-  const [a, b] = PALETTES[seed % PALETTES.length];
+  const [a, b] = paletteFor(title);
   const initials = title.split(/\s+/).filter(Boolean).slice(0, 2).map((w) => w[0]).join('').toUpperCase();
   return (
     <div className="cover-art" style={{ background: `linear-gradient(135deg, ${a}, ${b})` }} aria-hidden="true">
