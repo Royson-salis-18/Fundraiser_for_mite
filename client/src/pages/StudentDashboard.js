@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { eventsAPI, userAPI, configAPI } from '../services/api';
 import { StatCard, StatusBadge, EmptyState, Skeleton, money } from '../components/ui';
+import { greeting, CountUp, Ring, CoverArt } from '../components/flair';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -290,7 +291,18 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
         {loading && (<><div className="stat-grid"><Skeleton height={92} count={4} /></div><Skeleton height={260} /></>)}
         {!loading && (
         <>
-        <div className="stat-grid">
+        <section className="hero fade-up">
+          <div className="hero-copy">
+            <span className="eyebrow">{greeting()}</span>
+            <h2>{(user.name || 'there').split(' ')[0]}, here is where you stand.</h2>
+            <p>{mandatoryPayments.length - paidMandatory > 0
+              ? `You have ${mandatoryPayments.length - paidMandatory} mandatory payment${mandatoryPayments.length - paidMandatory > 1 ? 's' : ''} left, totalling ${money(mandatoryDue)}.`
+              : 'All mandatory payments are settled. Browse optional events below.'}</p>
+          </div>
+          <Ring percent={mandatoryPayments.length ? (paidMandatory / mandatoryPayments.length) * 100 : 100} label="mandatory" />
+        </section>
+
+        <div className="stat-grid stagger">
           <StatCard icon="clock" tone="orange" label="Mandatory due" value={money(mandatoryDue)} hint={`${mandatoryPayments.length - paidMandatory} payment(s) pending`} />
           <StatCard icon="ticket" tone="violet" label="Optional selected" value={money(selectedOptional)} hint={`${paidOptional} event(s) selected`} />
           <StatCard icon="check" tone="green" label="Total paid" value={money(totalPaid)} hint={`${paidMandatory + paidOptional} payment(s) completed`} />
@@ -321,8 +333,8 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                 if (rec) status = rec.status === 'confirmed' || rec.status === 'pending' || rec.status === 'rejected' ? rec.status : rec.paid ? 'confirmed' : 'cart';
                 const fee = Math.round(Number(payment.amount || 0) * feePercent) / 100;
                 return (
-                  <div key={eventId} className="card event-card">
-                    {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
+                  <div key={eventId} className="card event-card lift">
+                    {payment.poster ? <img src={payment.poster} alt={payment.title} className="cover" /> : <CoverArt title={payment.title} type={payment.type} />}
                     <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, alignItems: 'center' }}>
                       <span className={`badge ${payment.type === 'mandatory' ? 'badge-info' : 'badge-muted'}`} style={{ textTransform: 'capitalize' }}>{payment.type}</span>
                       {rec && <StatusBadge status={status} />}

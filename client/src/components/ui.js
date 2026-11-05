@@ -1,5 +1,6 @@
 import React from 'react';
 import Icon from './Icon';
+import { CountUp } from './flair';
 
 const STATUS = {
   pending:   { label: 'Awaiting review', cls: 'badge-warn' },
@@ -19,7 +20,7 @@ export const StatCard = ({ icon, label, value, hint, tone = 'navy' }) => (
     <div className="stat-icon" aria-hidden="true"><Icon name={icon} /></div>
     <div className="stat-body">
       <div className="stat-label">{label}</div>
-      <div className="stat-value">{value}</div>
+      <div className="stat-value">{typeof value === 'number' ? <CountUp value={value} /> : value}</div>
       {hint && <div className="stat-hint">{hint}</div>}
     </div>
   </div>

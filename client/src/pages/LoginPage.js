@@ -68,9 +68,10 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
   return (
     <div className="page login-split">
       <aside className="login-brand">
+        <span className="orb orb-a" aria-hidden="true" /><span className="orb orb-b" aria-hidden="true" /><span className="grid-lines" aria-hidden="true" />
         <div className="login-brand-inner">
           <span className="eyebrow">Mangalore Institute of Technology &amp; Engineering</span>
-          <h2>Pay for fests, events and fees in one place.</h2>
+          <h2>Pay for fests, events and fees <em>in one place.</em></h2>
           <p>Pay securely by UPI, track every payment in real time and download receipts the moment they are confirmed.</p>
           <ul className="login-points">
             <li><strong>Transparent pricing</strong><span>Event price and service fee shown before you pay.</span></li>
@@ -83,7 +84,7 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
       <div className="card narrow">
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <img src={appLogo} alt="Main Logo" style={{ width: '150px', height: 'auto', borderRadius: '15px', marginBottom: '15px' }} />
-          <h1 style={{ color: '#1A4E9B', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>MITE Fundraiser Portal</h1>
+          <h1 style={{ color: 'var(--color-navy)', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>MITE Fundraiser Portal</h1>
           <p style={{ color: '#6B7280' }}>Sign in with your USN and password</p>
         </div>
         <div>
@@ -119,7 +120,7 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
               Don't have an account?{' '}
               <span 
                 onClick={() => navigate('/register')} 
-                style={{ color: '#1A4E9B', cursor: 'pointer', textDecoration: 'underline', fontWeight: '500' }}
+                style={{ color: 'var(--color-navy)', cursor: 'pointer', textDecoration: 'underline', fontWeight: '500' }}
               >
                 Create account here
               </span>

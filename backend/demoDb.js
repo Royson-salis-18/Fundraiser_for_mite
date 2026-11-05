@@ -100,7 +100,7 @@ function createDemoClient() {
 
 async function seed(db, hashPassword) {
   if (await db.collection('users').findOne({ role: 'admin' })) return;
-  const admin = { usn: 'admin', name: 'Fest Coordinator', email: 'admin@mite.demo', role: 'admin', password: await hashPassword('01011990'), payments: { mandatory: [], optional: [] } };
+  const admin = { usn: 'admin', name: 'Meera Rao', email: 'admin@mite.demo', role: 'admin', password: await hashPassword('01011990'), payments: { mandatory: [], optional: [] } };
   const students = [
     { usn: '4MT22CS001', name: 'Aarav Shetty', email: 'aarav@mite.demo' },
     { usn: '4MT22CS002', name: 'Diya Rao', email: 'diya@mite.demo' },

@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventsAPI, adminAPI } from '../services/api';
 import { StatCard, EmptyState, Skeleton, money, downloadCSV } from '../components/ui';
+import { greeting, CountUp, CoverArt } from '../components/flair';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -202,7 +203,20 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         {loading && (<><div className="stat-grid"><Skeleton height={92} count={5} /></div><Skeleton height={260} /></>)}
         {!loading && (
         <>
-        <div className="stat-grid">
+        <section className="hero fade-up">
+          <div className="hero-copy">
+            <span className="eyebrow">{greeting()}</span>
+            <h2>{(user?.name || 'Admin').split(' ')[0]}, here is the fest at a glance.</h2>
+            <p>{stats.totalPayments} payment{stats.totalPayments === 1 ? '' : 's'} received so far across {stats.totalStudents} student{stats.totalStudents === 1 ? '' : 's'}. Review anything waiting in Payment Confirmation.</p>
+          </div>
+          <div className="hero-figure">
+            <span className="hero-figure-label">Platform fees earned</span>
+            <strong><CountUp value={fees.totals.fees} prefix="₹" /></strong>
+            <span className="hero-figure-sub">on <CountUp value={fees.totals.collected} prefix="₹" /> collected</span>
+          </div>
+        </section>
+
+        <div className="stat-grid stagger">
           <StatCard icon="building" tone="navy" label="Mandatory fees" value={payments.filter((p) => p.type === 'mandatory').length} />
           <StatCard icon="sparkle" tone="violet" label="Optional events" value={payments.filter((p) => p.type === 'optional').length} />
           <StatCard icon="users" tone="orange" label="Students enrolled" value={stats.totalStudents} />
@@ -220,16 +234,16 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
           </div>
 
           {query && !mandatoryPayments.length && !optionalEvents.length && <EmptyState icon="search" title="No events match your search" />}
-          <h3 style={{ color: '#1A4E9B', marginBottom: '10px' }}>Mandatory Fees & Funds</h3>
+          <h3 style={{ color: 'var(--color-navy)', marginBottom: '10px' }}>Mandatory Fees & Funds</h3>
           <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {mandatoryPayments.map((payment) => (
-              <div key={payment.id} className="card">
-                {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
+              <div key={payment._id || payment.id} className="card lift">
+                {payment.poster ? <img src={payment.poster} alt={payment.title} className="cover" /> : <CoverArt title={payment.title} type={payment.type} />}
                 <div style={{ padding: 0, marginTop: 12 }}>
                   <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{payment.title}</h3>
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1A4E9B', margin: 0 }}>₹{payment.amount}</p>
+                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-navy)', margin: 0 }}>₹{payment.amount}</p>
                     <button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button>
                   </div>
                 </div>
@@ -237,16 +251,16 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
             ))}
           </div>
 
-          <h3 style={{ color: '#1A4E9B', marginBottom: '10px' }}>Optional Events & Fundraisers</h3>
+          <h3 style={{ color: 'var(--color-navy)', marginBottom: '10px' }}>Optional Events & Fundraisers</h3>
           <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {optionalEvents.map((payment) => (
-              <div key={payment.id} className="card">
-                {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
+              <div key={payment._id || payment.id} className="card lift">
+                {payment.poster ? <img src={payment.poster} alt={payment.title} className="cover" /> : <CoverArt title={payment.title} type={payment.type} />}
                 <div style={{ padding: 0, marginTop: 12 }}>
                   <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{payment.title}</h3>
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: '#1A4E9B', margin: 0 }}>₹{payment.amount}</p>
+                    <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-navy)', margin: 0 }}>₹{payment.amount}</p>
                     <button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button>
                   </div>
                 </div>

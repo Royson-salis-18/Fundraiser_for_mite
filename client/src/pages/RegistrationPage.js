@@ -106,7 +106,7 @@ const RegistrationPage = ({ setIsLoggedIn, setUser }) => {
       <div className="card narrow" style={{ maxWidth: '450px' }}>
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <img src={appLogo} alt="Main Logo" style={{ width: '150px', height: 'auto', borderRadius: '15px', marginBottom: '15px' }} />
-          <h1 style={{ color: '#1A4E9B', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>Create Account</h1>
+          <h1 style={{ color: 'var(--color-navy)', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>Create Account</h1>
           <p style={{ color: '#6B7280' }}>Register for the Fundraiser Portal</p>
         </div>
         
@@ -191,7 +191,7 @@ const RegistrationPage = ({ setIsLoggedIn, setUser }) => {
               Already have an account?{' '}
               <span 
                 onClick={() => navigate('/login')} 
-                style={{ color: '#1A4E9B', cursor: 'pointer', textDecoration: 'underline' }}
+                style={{ color: 'var(--color-navy)', cursor: 'pointer', textDecoration: 'underline' }}
               >
                 Sign in here
               </span>
