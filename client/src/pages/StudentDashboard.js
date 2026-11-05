@@ -328,7 +328,7 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
             <div className="grid-cards">
               {filteredPayments.map((payment) => (
                 <div key={payment.id} className="card">
-                  <img src={payment.poster} alt={payment.title} className="cover" />
+                  {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
                   <div style={{ padding: 0, marginTop: 12 }}>
                     <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{payment.title}</h3>
                     <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>

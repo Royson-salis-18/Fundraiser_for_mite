@@ -248,4 +248,25 @@ export const adminAPI = {
     });
     return response.json();
   },
+
+  // Platform fee ledger
+  getFees: async () => {
+    const response = await fetch(`${API_URL}/admin/fees`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    return response.json();
+  },
+};
+
+// Public payment settings (platform fee %, optional payment portal link)
+export const configAPI = {
+  getPayment: async () => {
+    try {
+      const response = await fetch(`${API_URL}/config/payment`);
+      if (!response.ok) throw new Error('bad response');
+      return await response.json();
+    } catch {
+      return { feePercent: 2, feeLabel: 'Platform service fee', gatewayUrl: '' };
+    }
+  },
 };

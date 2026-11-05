@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { eventsAPI, userAPI } from '../services/api';
+import { eventsAPI, userAPI, configAPI } from '../services/api';
 import TopNav from '../components/TopNav';
 import appLogo from '../1630654323517.jpg';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -13,6 +13,7 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
   const [showSettings, setShowSettings] = useState(false);
   const [cartItems, setCartItems] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [payCfg, setPayCfg] = useState({ feePercent: 2, feeLabel: 'Platform service fee', gatewayUrl: '' });
   const navigate = useNavigate();
 
   // Load cart from database
@@ -56,7 +57,17 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
     }
   }, [user?.id, user?.payments]);
 
-  const total = cartItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  useEffect(() => { configAPI.getPayment().then(setPayCfg); }, []);
+
+  // Integer-paise math so totals never show float noise
+  const feeFor = (amount) => {
+    const paise = Math.round((Number(amount) || 0) * 100);
+    return Math.round((paise * payCfg.feePercent) / 100) / 100;
+  };
+  const subtotal = cartItems.reduce((sum, i) => sum + (Number(i.amount) || 0), 0);
+  const totalFee = cartItems.reduce((sum, i) => sum + feeFor(i.amount), 0);
+  const total = Math.round((subtotal + totalFee) * 100) / 100;
+  const money = (n) => `₹${Number(n).toFixed(2).replace(/\.00$/, '')}`;
 
   useEffect(() => {
     if (user?.role === 'admin') {
@@ -69,14 +80,14 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
     const params = new URLSearchParams({
       pa: item.payeeUpiId,
       pn: item.payeeName || 'Payee',
-      am: String(item.amount || 0),
+      am: (Math.round(((Number(item.amount) || 0) + feeFor(item.amount)) * 100) / 100).toFixed(2),
       cu: 'INR',
       tn: item.title || 'Event',
     });
     return `upi://pay?${params.toString()}`;
   };
 
-  const buildQrSrc = (upiUrl) => upiUrl ? `https://chart.googleapis.com/chart?cht=qr&chs=220x220&chl=${encodeURIComponent(upiUrl)}` : '';
+  const buildQrSrc = (upiUrl) => upiUrl ? `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(upiUrl)}` : '';
 
   const handleFile = (id, e) => {
     const file = e.target.files?.[0];
@@ -219,7 +230,15 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between' }}>
                         <span>{i.title}</span>
-                        <strong>₹{i.amount}</strong>
+                        <strong>{money(i.amount)}</strong>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13, color: '#6B7280' }}>
+                        <span>{payCfg.feeLabel} ({payCfg.feePercent}%)</span>
+                        <span>+ {money(feeFor(i.amount))}</span>
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 600, marginTop: 2 }}>
+                        <span>Pay for this event</span>
+                        <span>{money(Math.round((Number(i.amount) + feeFor(i.amount)) * 100) / 100)}</span>
                       </div>
                       {i.payeeUpiId && (
                         <div style={{ display: 'flex', gap: 16, alignItems: 'center', marginTop: 8 }}>
@@ -235,6 +254,16 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
                             <img src={buildQrSrc(buildUpiUrl(i))} alt="UPI QR" style={{ width: 92, height: 92, borderRadius: 8, border: '1px solid #E5E7EB' }} />
                           )}
                         </div>
+                      )}
+                      {buildUpiUrl(i) && (
+                        <a className="btn btn-accent" href={buildUpiUrl(i)} style={{ display: 'inline-block', marginTop: 12 }}>
+                          Pay {money(Math.round((Number(i.amount) + feeFor(i.amount)) * 100) / 100)} with UPI app
+                        </a>
+                      )}
+                      {payCfg.gatewayUrl && (
+                        <a className="btn btn-outline" href={payCfg.gatewayUrl} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-block', marginTop: 12, marginLeft: 8 }}>
+                          Open payment portal
+                        </a>
                       )}
                       <div style={{ display: 'grid', gap: 12, marginTop: 12 }}>
                         <div className="field">
@@ -269,14 +298,15 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
                   </div>
                 );
               })}
-              <div style={{ display: 'flex', justifyContent: 'space-between', borderTop: '1px solid #E5E7EB', paddingTop: 8, marginTop: 8 }}>
-                <span>Total</span>
-                <strong>₹{total}</strong>
+              <div style={{ borderTop: '1px solid #E5E7EB', paddingTop: 8, marginTop: 8, display: 'grid', gap: 4 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}><span>Subtotal</span><span>{money(subtotal)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', color: '#6B7280' }}><span>{payCfg.feeLabel} ({payCfg.feePercent}%)</span><span>{money(totalFee)}</span></div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 18 }}><strong>Total payable</strong><strong>{money(total)}</strong></div>
               </div>
             </div>
             <div className="card" style={{ marginBottom: 16 }}>
               <h3 style={{ marginTop: 0 }}>Instructions</h3>
-              <p style={{ color: '#6B7280', marginTop: 0 }}>For each event, pay to the listed UPI and provide its unique UTR and screenshot. Your payment will be reviewed by an admin.</p>
+              <p style={{ color: '#6B7280', marginTop: 0 }}>For each event, pay the amount shown (event price plus the platform service fee) to the listed UPI and provide its unique UTR and screenshot. Your payment will be reviewed by an admin.</p>
             </div>
             <div style={{ textAlign: 'right' }}>
               <button 

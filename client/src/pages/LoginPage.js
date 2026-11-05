@@ -70,7 +70,8 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
       <div className="card narrow">
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
           <img src={appLogo} alt="Main Logo" style={{ width: '150px', height: 'auto', borderRadius: '15px', marginBottom: '15px' }} />
-          <h1 style={{ color: '#1A4E9B', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>Fundraiser Portal</h1>
+          <h1 style={{ color: '#1A4E9B', fontSize: '24px', fontWeight: 'bold', marginTop: '10px' }}>MITE Fundraiser Portal</h1>
+          <p style={{ color: '#6B7280', margin: '4px 0 0' }}>Mangalore Institute of Technology &amp; Engineering</p>
           <p style={{ color: '#6B7280' }}>Sign in with your USN and password</p>
         </div>
         <div>

@@ -1,13 +1,16 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 :root {
-  --color-bg: #F5F7FB;
+  --color-bg: #F3F5FA;
   --color-card: #FFFFFF;
   --color-text: #0F172A;
-  --color-muted: #6B7280;
-  --color-primary: #EF7100; /* primary theme color set to orange */
-  --color-accent: #EF7100; /* keep accent aligned; adjust if you want contrast */
-  --radius: 10px;
-  --radius-sm: 6px;
-  --shadow: 0 4px 10px rgba(15, 23, 42, 0.08);
+  --color-muted: #64748B;
+  --color-navy: #12306B;       /* institutional navy */
+  --color-primary: #EF7100;    /* MITE orange */
+  --color-primary-dark: #C85F00;
+  --color-accent: #EF7100;
+  --radius: 14px;
+  --radius-sm: 8px;
+  --shadow: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 24px rgba(15, 23, 42, 0.07);
   --border: 1px solid #E5E7EB;
   --space-1: 4px;
   --space-2: 8px;
@@ -23,7 +26,7 @@ body {
   margin: 0;
   background: var(--color-bg);
   color: var(--color-text);
-  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, Helvetica Neue, Arial, "Apple Color Emoji", "Segoe UI Emoji";
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
@@ -35,44 +38,32 @@ body {
 .container { max-width: 1200px; width: 100%; margin: 0 auto; padding: var(--space-4) var(--space-5) var(--space-5);     padding-top: 20px;}
 .container.wide { max-width: 100%; padding-left: var(--space-5); padding-right: var(--space-5); }
 .header {
-  /* Acrylic-style translucent header */
-  background: rgba(239, 113, 0, 0.78);
+  background: linear-gradient(120deg, var(--color-navy) 0%, #1c4693 60%, #2a5bb5 100%);
   color: #fff;
-  padding: var(--space-3) var(--space-5);
+  padding: var(--space-3) var(--space-6);
   display: flex; align-items: center; justify-content: space-between;
-  backdrop-filter: blur(10px) saturate(120%);
-  -webkit-backdrop-filter: blur(10px) saturate(120%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-  /* subtle sand-like noise overlay */
-  background-image:
-    radial-gradient(rgba(255, 255, 255, 0.10) 1px, transparent 1px),
-    radial-gradient(rgba(0, 0, 0, 0.05) 1px, transparent 1px);
-  background-size: 2px 2px, 3px 3px;
-  background-position: 0 0, 1px 1px;
+  position: sticky; top: 0; z-index: 20;
+  box-shadow: 0 4px 18px rgba(18, 48, 107, 0.25);
+  border-bottom: 3px solid var(--color-primary);
 }
 .header a { text-decoration: none; margin-right: var(--space-4); }
 .header a:not(.btn) { color: #fff; }
 .header .btn { color: #111827; }
+.header .btn:hover { transform: translateY(-1px); }
 .header a:last-child { margin-right: 0; }
 
-.section-title { color: var(--color-accent); margin: 0 0 var(--space-3); font-weight: 700; }
+.section-title { color: var(--color-navy); margin: 0 0 var(--space-3); font-weight: 700; }
 
-.card { 
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(255, 255, 255, 0.6);
+.card {
+  background: var(--color-card);
+  border: 1px solid #E8ECF4;
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: var(--space-5);
+  padding: var(--space-6);
   width: 100%;
-  backdrop-filter: blur(8px) saturate(110%);
-  -webkit-backdrop-filter: blur(8px) saturate(110%);
-  /* subtle sand-like texture */
-  background-image:
-    radial-gradient(rgba(0, 0, 0, 0.03) 1px, transparent 1px),
-    radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-  background-size: 3px 3px, 4px 4px;
-  background-position: 0 0, 1px 1px;
+  transition: box-shadow .2s ease, transform .2s ease;
 }
+.card:hover { box-shadow: 0 2px 4px rgba(15,23,42,.06), 0 14px 32px rgba(15,23,42,.10); }
 .card.narrow { max-width: 420px; width: 100%; margin: 0 auto; }
 .card-title { margin: 0 0 var(--space-2); font-size: 18px; font-weight: 700; }
 
@@ -89,17 +80,22 @@ body {
   width: 100%;
   padding: 10px 12px;
   border-radius: var(--radius-sm);
-  border: 1px solid #D1D5DB;
+  border: 1px solid #CBD5E1;
   background: #fff;
   font-size: 14px;
+  font-family: inherit;
+  transition: border-color .15s, box-shadow .15s;
 }
+.input:focus, .textarea:focus, .select:focus { outline: none; border-color: var(--color-primary); box-shadow: 0 0 0 3px rgba(239,113,0,.18); }
 .textarea { min-height: 96px; resize: vertical; }
 
 /* Buttons */
-.btn { padding: 10px 16px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; background: #E5E7EB; color: #111827; }
-.btn-primary { background: var(--color-primary); color: #fff; }
-.btn-accent { background: var(--color-accent); color: #fff; }
-.btn-outline { background: #fff; border: 1px solid #D1D5DB; color: #111827; }
+.btn { padding: 10px 18px; border-radius: var(--radius-sm); cursor: pointer; border: 1px solid transparent; background: #E5E7EB; color: #111827; font-weight: 600; font-family: inherit; font-size: 14px; text-decoration: none; transition: transform .15s, box-shadow .15s, background .15s; }
+.btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 14px rgba(15,23,42,.14); }
+.btn:focus-visible { outline: 3px solid rgba(239,113,0,.4); outline-offset: 2px; }
+.btn-primary { background: linear-gradient(135deg, #F58220, var(--color-primary-dark)); color: #fff; }
+.btn-accent { background: var(--color-navy); color: #fff; }
+.btn-outline { background: #fff; border: 1px solid #CBD5E1; color: #0F172A; }
 .btn:disabled { opacity: .7; cursor: not-allowed; }
 
 /* Images */
@@ -111,11 +107,15 @@ body {
 
 /* Page-specific backgrounds */
 .page.bg-login {
-  background: url("./Wallpaper para cll.jpg") center/cover no-repeat;
-  background-attachment: fixed;
+  background:
+    radial-gradient(1000px 500px at 85% -10%, rgba(239,113,0,.35), transparent 60%),
+    radial-gradient(900px 600px at -10% 110%, rgba(42,91,181,.55), transparent 60%),
+    linear-gradient(135deg, #0B1F4A 0%, #12306B 100%);
 }
 
-.page.bg-student {
-  background: url("./Orange And Blue Abstract Background PNG Images,  Png, Joyous, Poster Banner PNG Transparent Background - Pngtree.jpg") center/cover no-repeat;
-  background-attachment: fixed;
+.page.bg-student { background: linear-gradient(180deg, #EAF0FB 0%, var(--color-bg) 280px); }
+
+@media (max-width: 640px) {
+  .header { flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+  .container, .container.wide { padding-left: var(--space-3); padding-right: var(--space-3); }
 }

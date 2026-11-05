@@ -4,6 +4,21 @@ const cors = require('cors');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
+const { computeFee, getFeePercent } = require('./fees');
+
+// ---- Password helpers: bcrypt hashes; legacy plaintext values are upgraded on next login ----
+const isBcryptHash = (v) => typeof v === 'string' && /^\$2[aby]\$\d{2}\$/.test(v);
+async function hashPassword(plain) {
+  return bcrypt.hash(String(plain).trim(), 10);
+}
+async function checkPassword(stored, supplied) {
+  if (typeof stored !== 'string' || typeof supplied !== 'string') return { ok: false };
+  if (isBcryptHash(stored)) return { ok: await bcrypt.compare(supplied, stored) };
+  // legacy plaintext record
+  return { ok: stored === supplied, needsRehash: stored === supplied };
+}
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -20,33 +35,46 @@ const allowedOrigins = [
 // Updated CORS config for Render deployment
 
 
-app.use(cors({
-  origin: function(origin, callback) {
-    // Allow requests with no origin (like mobile apps or Postman)
-    if (!origin) return callback(null, true);
-    
-    if (allowedOrigins.indexOf(origin) !== -1) {
-      callback(null, true);
-    } else {
-      console.log('Blocked by CORS:', origin);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true
-}));
-// Increase limit to handle image uploads (base64 encoded screenshots can be large)
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(helmet({ contentSecurityPolicy: false, crossOriginEmbedderPolicy: false }));
 
-// MongoDB Connection
-const uri = process.env.MONGODB_URI;
-const client = new MongoClient(uri, {
-  serverApi: {
-    version: ServerApiVersion.v1,
-    strict: true,
-    deprecationErrors: true,
-  }
+// Throttle credential endpoints to slow brute-force attempts
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts. Please try again in a few minutes.' }
 });
+app.use('/api/auth', authLimiter);
+app.use('/api/user/change-password', authLimiter);
+
+app.use(cors((req, callback) => {
+  const origin = req.headers.origin;
+  let allowed = !origin; // non-browser clients (curl, mobile) send no Origin
+  if (origin) {
+    let sameOrigin = false;
+    try { sameOrigin = new URL(origin).host === req.headers.host; } catch { /* malformed Origin */ }
+    allowed = sameOrigin || allowedOrigins.includes(origin);
+  }
+  if (!allowed) console.log('Blocked by CORS:', origin);
+  callback(allowed ? null : new Error('Not allowed by CORS'), { origin: allowed, credentials: true });
+}));
+// Payment screenshots arrive as base64 data URLs; 8mb comfortably fits a phone screenshot
+app.use(express.json({ limit: '8mb' }));
+app.use(express.urlencoded({ extended: true, limit: '8mb' }));
+
+// MongoDB Connection (DEMO_MODE=true swaps in a seeded in-memory database for local demos)
+const DEMO_MODE = process.env.DEMO_MODE === 'true';
+const uri = process.env.MONGODB_URI;
+const client = DEMO_MODE
+  ? require('./demoDb').createDemoClient()
+  : new MongoClient(uri, {
+      serverApi: {
+        version: ServerApiVersion.v1,
+        strict: true,
+        deprecationErrors: true,
+      }
+    });
 
 let db;
 let isConnected = false;
@@ -56,6 +84,7 @@ async function connectDB() {
   try {
     await client.connect();
     db = client.db("campus_events"); // Your database name
+    if (DEMO_MODE) await require('./demoDb').seed(db, hashPassword);
     isConnected = true;
     console.log("✅ Connected to MongoDB!");
   } catch (error) {
@@ -134,7 +163,7 @@ app.post('/api/auth/register', async (req, res) => {
     const user = {
       usn: usn.trim(),
       email: email.toLowerCase().trim(),
-      password: password.trim(),
+      password: await hashPassword(password),
       name: name.trim(),
       role: role || 'student',
       payments: {                    // ← ADD THIS STRUCTURE
@@ -199,10 +228,17 @@ app.post('/api/auth/login', async (req, res) => {
     }
 
     // Verify password
-    const validPassword = user.password === password;
+    const pw = await checkPassword(user.password, password);
 
-    if (!validPassword) {
+    if (!pw.ok) {
       return res.status(400).json({ error: 'Invalid USN or password' });
+    }
+
+    if (pw.needsRehash) {
+      await db.collection('users').updateOne(
+        { _id: user._id },
+        { $set: { password: await hashPassword(password) } }
+      );
     }
 
     // Ensure payments structure exists (for old users)
@@ -712,7 +748,7 @@ app.put('/api/user/profile', authenticateToken, async (req, res) => {
       updateData.dob = dob;
       // Update password if DOB changed
       if (req.body.password) {
-        updateData.password = req.body.password;
+        updateData.password = await hashPassword(req.body.password);
       }
     }
     if (phone) updateData.phone = phone.trim();
@@ -769,7 +805,7 @@ app.put('/api/user/change-password', authenticateToken, async (req, res) => {
     }
 
     // Verify current password
-    if (user.password !== currentPassword) {
+    if (!(await checkPassword(user.password, currentPassword)).ok) {
       return res.status(400).json({ error: 'Current password is incorrect' });
     }
 
@@ -778,7 +814,7 @@ app.put('/api/user/change-password', authenticateToken, async (req, res) => {
       { _id: new ObjectId(req.user.id) },
       { 
         $set: { 
-          password: newPassword,
+          password: await hashPassword(newPassword),
           updatedAt: new Date()
         } 
       }
@@ -1039,8 +1075,7 @@ app.get('/api/admin/pending-payments', authenticateToken, async (req, res) => {
 // Confirm or reject a payment (admin only)
 app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
   console.log('🔍 PUT /api/admin/confirm-payment - Route hit');
-  console.log('🔍 Request body:', req.body);
-  
+
   const session = client.startSession();
   session.startTransaction();
   
@@ -1053,7 +1088,6 @@ app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
     }
 
     const { studentId, paymentId, status, eventType } = req.body;
-    console.log('🔍 Processing confirmation:', { studentId, paymentId, status, eventType });
 
     if (!studentId || !paymentId || !status || !eventType) {
       await session.abortTransaction();
@@ -1129,6 +1163,33 @@ app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
       return res.status(404).json({ error: 'Student not found' });
     }
 
+    // Record the platform fee for confirmed payments (idempotent per student+event)
+    if (status === 'confirmed') {
+      const eventDoc = ObjectId.isValid(paymentId)
+        ? await db.collection('events').findOne({ _id: new ObjectId(paymentId) }, { session })
+        : null;
+      const feePercent = getFeePercent();
+      const { baseAmount, feeAmount, totalAmount } = computeFee(eventDoc?.amount, feePercent);
+      await db.collection('platform_fees').updateOne(
+        { studentId: String(studentId), eventId: String(paymentId) },
+        {
+          $set: {
+            eventTitle: eventDoc?.title || '',
+            feePercent, baseAmount, feeAmount, totalAmount,
+            confirmedAt: now, confirmedBy: req.user.id
+          },
+          $setOnInsert: { createdAt: now }
+        },
+        { upsert: true, session }
+      );
+    } else {
+      // A rejection after an earlier confirmation reverses the fee
+      await db.collection('platform_fees').deleteOne(
+        { studentId: String(studentId), eventId: String(paymentId) },
+        { session }
+      );
+    }
+
     // If we got here, commit the transaction
     await session.commitTransaction();
     session.endSession();
@@ -1149,6 +1210,40 @@ app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
       success: false,
       error: 'Failed to confirm payment: ' + error.message 
     });
+  }
+});
+
+// ============= PLATFORM FEE ROUTES =============
+
+// Public: fee settings the checkout needs to display a transparent breakdown
+app.get('/api/config/payment', (req, res) => {
+  res.json({
+    feePercent: getFeePercent(),
+    feeLabel: 'Platform service fee',
+    gatewayUrl: process.env.PAYMENT_PORTAL_URL || ''
+  });
+});
+
+// Admin: platform fee ledger + totals
+app.get('/api/admin/fees', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    const entries = await db.collection('platform_fees')
+      .find({}).sort({ confirmedAt: -1 }).limit(500).toArray();
+    const totals = entries.reduce((t, e) => ({
+      collected: t.collected + (e.baseAmount || 0),
+      fees: t.fees + (e.feeAmount || 0),
+      count: t.count + 1
+    }), { collected: 0, fees: 0, count: 0 });
+    res.json({
+      feePercent: getFeePercent(),
+      totals: { ...totals, fees: Math.round(totals.fees * 100) / 100 },
+      entries
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load fees: ' + error.message });
   }
 });
 

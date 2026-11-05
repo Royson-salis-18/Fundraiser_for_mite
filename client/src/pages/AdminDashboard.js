@@ -10,6 +10,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ totalStudents: 0, totalPayments: 0 });
+  const [fees, setFees] = useState({ feePercent: 0, totals: { fees: 0, collected: 0, count: 0 } });
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -31,6 +32,13 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         const events = await eventsAPI.getAll();
         setPayments(events || []);
         
+        try {
+          const feeData = await adminAPI.getFees();
+          if (feeData && !feeData.error) setFees(feeData);
+        } catch (error) {
+          console.error('Failed to load fees:', error);
+        }
+
         // Load admin stats
         try {
           const summary = await adminAPI.getPaymentSummary();
@@ -189,7 +197,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         )}
         {!loading && (
         <>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '20px', marginBottom: '20px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '20px' }}>
           <div className="card">
             <h2 style={{ color: '#EF7100' }}>Mandatory Payments</h2>
             <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{mandatoryPayments.length}</p>
@@ -206,6 +214,11 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
             <h2 style={{ color: '#EF7100' }}>Payments Received</h2>
             <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{stats.totalPayments}</p>
           </div>
+          <div className="card">
+            <h2 style={{ color: '#EF7100' }}>Platform Fees ({fees.feePercent}%)</h2>
+            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>₹{Number(fees.totals.fees).toLocaleString('en-IN')}</p>
+            <p style={{ color: '#6B7280', margin: 0 }}>on ₹{Number(fees.totals.collected).toLocaleString('en-IN')} confirmed · {fees.totals.count} payments</p>
+          </div>
         </div>
 
         <div className="card">
@@ -218,7 +231,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
           <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {mandatoryPayments.map((payment) => (
               <div key={payment.id} className="card">
-                <img src={payment.poster} alt={payment.title} className="cover" />
+                {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
                 <div style={{ padding: 0, marginTop: 12 }}>
                   <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{payment.title}</h3>
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>
@@ -235,7 +248,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
           <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {optionalEvents.map((payment) => (
               <div key={payment.id} className="card">
-                <img src={payment.poster} alt={payment.title} className="cover" />
+                {payment.poster && <img src={payment.poster} alt={payment.title} className="cover" />}
                 <div style={{ padding: 0, marginTop: 12 }}>
                   <h3 style={{ fontSize: '18px', fontWeight: 'bold' }}>{payment.title}</h3>
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>

@@ -9,6 +9,9 @@ A fundraising application for MITE (Mangalore Institute of Technology and Engine
 - **Payment System**: UPI integration with UTR tracking and screenshot upload
 - **Payment Confirmation**: Admin review system for payment verification
 - **User Management**: Student and admin roles with authentication
+- **Platform service fee**: A configurable percentage (default 2%) shown transparently at checkout and recorded in a fee ledger when an admin confirms a payment
+- **Fee ledger**: Admin dashboard card plus `GET /api/admin/fees` with totals and per-payment entries
+- **UPI deep link**: One-tap "Pay with UPI app" for the exact total, plus optional payment-portal link
 
 ## Tech Stack
 
@@ -43,6 +46,33 @@ A fundraising application for MITE (Mangalore Institute of Technology and Engine
    # From root directory
    npm run dev
    ```
+
+## Platform fee
+
+Set `PLATFORM_FEE_PERCENT` (0-20, default 2). Checkout shows event price, fee and total payable. When an admin confirms a payment, the fee is written to the `platform_fees` collection (reversed if the payment is later rejected). Admins see totals on the dashboard.
+
+> **Settlement note:** a single UPI payment goes to one payee, so the fee is *recorded* here but not automatically routed to a second account. To split money automatically, use a gateway with split settlements (e.g. Razorpay Route or Cashfree Easy Split) and set `PAYMENT_PORTAL_URL`.
+
+## Try it without a database
+
+```bash
+cd client && npm install && npm run build && cd ..
+cd backend && npm install
+DEMO_MODE=true NODE_ENV=production JWT_SECRET=demo PORT=5000 node server.js
+```
+
+Open http://localhost:5000. Demo logins: admin `admin` / `01011990`; student `4MT22CS001` / `01012004`. Data is in memory only.
+
+## Tests
+
+```bash
+cd backend && node --test fees.test.js
+```
+
+## Security notes
+
+- Passwords are bcrypt-hashed; legacy plaintext passwords are upgraded automatically at next login.
+- Auth endpoints are rate limited, `helmet` headers are enabled, request bodies are capped at 8 MB.
 
 ## Deployment
 

@@ -18,3 +18,13 @@ FRONTEND_URL=https://your-frontend-app.onrender.com
 # Node Environment
 NODE_ENV=development
 
+
+# ---- Platform fee ----
+# Percentage added on top of each event amount as a transparent "platform service fee" (0-20, default 2)
+PLATFORM_FEE_PERCENT=2
+
+# Optional: link to an online payment portal/gateway page, shown as "Open payment portal" at checkout
+PAYMENT_PORTAL_URL=
+
+# Optional: run with a seeded in-memory database for demos (no MongoDB needed). Never use in production.
+# DEMO_MODE=true
