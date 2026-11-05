@@ -74,7 +74,7 @@ const LoginPage = ({ setIsLoggedIn, setUser }) => {
           <h2>Pay for fests, events and fees <em>in one place.</em></h2>
           <p>Pay securely by UPI, track every payment in real time and download receipts the moment they are confirmed.</p>
           <ul className="login-points">
-            <li><strong>Transparent pricing</strong><span>Event price and service fee shown before you pay.</span></li>
+            <li><strong>Transparent pricing</strong><span>A full cost breakdown is published for every event.</span></li>
             <li><strong>Verified by the fest team</strong><span>Every payment is reviewed and confirmed by an administrator.</span></li>
             <li><strong>Instant receipts</strong><span>Printable receipts with a unique number for each payment.</span></li>
           </ul>

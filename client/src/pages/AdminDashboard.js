@@ -2,8 +2,8 @@ import { useToast } from '../components/Toast';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventsAPI, adminAPI } from '../services/api';
-import { StatCard, EmptyState, Skeleton, money, downloadCSV } from '../components/ui';
-import { greeting, CountUp, CoverArt } from '../components/flair';
+import { StatCard, EmptyState, Skeleton } from '../components/ui';
+import { greeting, CoverArt } from '../components/flair';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -15,7 +15,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
   const [stats, setStats] = useState({ totalStudents: 0, totalPayments: 0 });
-  const [fees, setFees] = useState({ feePercent: 0, totals: { fees: 0, collected: 0, count: 0 } });
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedPayment, setSelectedPayment] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -37,13 +36,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         const events = await eventsAPI.getAll();
         setPayments(events || []);
         
-        try {
-          const feeData = await adminAPI.getFees();
-          if (feeData && !feeData.error) setFees(feeData);
-        } catch (error) {
-          console.error('Failed to load fees:', error);
-        }
-
         // Load admin stats
         try {
           const summary = await adminAPI.getPaymentSummary();
@@ -94,10 +86,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
   const matches = (p) => `${p.title} ${p.description || ''}`.toLowerCase().includes(query.trim().toLowerCase());
   const mandatoryPayments = payments.filter((p) => p.type === 'mandatory' && matches(p));
   const optionalEvents = payments.filter((p) => p.type === 'optional' && matches(p));
-  const exportFees = () => downloadCSV('platform-fee-ledger.csv', [
-    ['Receipt date', 'Event', 'Base amount', 'Fee %', 'Fee amount', 'Total'],
-    ...(fees.entries || []).map((e) => [new Date(e.confirmedAt).toLocaleString('en-IN'), e.eventTitle, e.baseAmount, e.feePercent, e.feeAmount, e.totalAmount]),
-  ]);
 
   const handleOpenCreate = () => {
     setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '', qrCode: '' });
@@ -189,6 +177,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         titleTo="/admin-dashboard"
         subtitle="Manage fees and fundraising events"
         links={[
+          { to: '/admin-analytics', label: 'Reports' },
           { to: '/payment-confirmation', label: 'Payment Confirmation' },
         ]}
         extraRight={(
@@ -209,11 +198,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
             <h2>{(user?.name || 'Admin').split(' ')[0]}, here is the fest at a glance.</h2>
             <p>{stats.totalPayments} payment{stats.totalPayments === 1 ? '' : 's'} received so far across {stats.totalStudents} student{stats.totalStudents === 1 ? '' : 's'}. Review anything waiting in Payment Confirmation.</p>
           </div>
-          <div className="hero-figure">
-            <span className="hero-figure-label">Platform fees earned</span>
-            <strong><CountUp value={fees.totals.fees} prefix="₹" /></strong>
-            <span className="hero-figure-sub">on <CountUp value={fees.totals.collected} prefix="₹" /> collected</span>
-          </div>
         </section>
 
         <div className="stat-grid stagger">
@@ -221,7 +205,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
           <StatCard icon="sparkle" tone="violet" label="Optional events" value={payments.filter((p) => p.type === 'optional').length} />
           <StatCard icon="users" tone="orange" label="Students enrolled" value={stats.totalStudents} />
           <StatCard icon="check" tone="green" label="Payments received" value={stats.totalPayments} />
-          <StatCard icon="wallet" tone="orange" label={`Platform fees (${fees.feePercent}%)`} value={money(fees.totals.fees)} hint={`on ${money(fees.totals.collected)} · ${fees.totals.count} confirmed`} />
         </div>
 
         <div className="card">
@@ -244,7 +227,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-navy)', margin: 0 }}>₹{payment.amount}</p>
-                    <button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button>
+                    <div className="btn-row"><Link to={`/admin/events/${payment._id || payment.id}`} className="btn btn-outline">Details</Link><button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button></div>
                   </div>
                 </div>
               </div>
@@ -261,7 +244,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
                   <p style={{ color: '#6B7280', marginBottom: '10px' }}>{payment.description}</p>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <p style={{ fontSize: '20px', fontWeight: 'bold', color: 'var(--color-navy)', margin: 0 }}>₹{payment.amount}</p>
-                    <button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button>
+                    <div className="btn-row"><Link to={`/admin/events/${payment._id || payment.id}`} className="btn btn-outline">Details</Link><button onClick={() => handleEdit(payment)} className="btn btn-outline">Edit</button></div>
                   </div>
                 </div>
               </div>
@@ -269,31 +252,6 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
           </div>
         </div>
 
-        <div className="card" style={{ marginTop: 20 }}>
-          <div className="toolbar" style={{ justifyContent: 'space-between' }}>
-            <h2 style={{ margin: 0, fontSize: 22 }}>Platform fee ledger</h2>
-            <button className="btn btn-outline" onClick={exportFees} disabled={!(fees.entries || []).length}>Export CSV</button>
-          </div>
-          {!(fees.entries || []).length ? (
-            <EmptyState icon="wallet" title="No fees recorded yet">Fees appear here as soon as you confirm a payment.</EmptyState>
-          ) : (
-            <div className="table-wrap">
-              <table className="table">
-                <thead><tr><th>Confirmed</th><th>Event</th><th>Base</th><th>Fee</th><th>Total</th></tr></thead>
-                <tbody>
-                  {fees.entries.slice(0, 15).map((e) => (
-                    <tr key={e._id}>
-                      <td>{new Date(e.confirmedAt).toLocaleString('en-IN')}</td>
-                      <td>{e.eventTitle}</td><td>{money(e.baseAmount)}</td>
-                      <td><strong>{money(e.feeAmount)}</strong> <span style={{ color: 'var(--color-muted)' }}>({e.feePercent}%)</span></td>
-                      <td>{money(e.totalAmount)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
         </>
         )}
       </main>

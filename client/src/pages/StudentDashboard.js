@@ -1,9 +1,9 @@
 import { useToast } from '../components/Toast';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { eventsAPI, userAPI, configAPI } from '../services/api';
+import { eventsAPI, userAPI } from '../services/api';
 import { StatCard, StatusBadge, EmptyState, Skeleton, money } from '../components/ui';
-import { greeting, CountUp, Ring, CoverArt } from '../components/flair';
+import { greeting, Ring, CoverArt } from '../components/flair';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
@@ -18,14 +18,11 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
   const [addedItem, setAddedItem] = useState(null);
   const [filter, setFilter] = useState('all');
   const [query, setQuery] = useState('');
-  const [feePercent, setFeePercent] = useState(0);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
-
-  useEffect(() => { configAPI.getPayment().then((c) => setFeePercent(c.feePercent || 0)); }, []);
 
   // Fetch events from database
   useEffect(() => {
@@ -331,7 +328,6 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                 const rec = list.find((p) => (p.id || p._id)?.toString() === eventId);
                 let status = 'due';
                 if (rec) status = rec.status === 'confirmed' || rec.status === 'pending' || rec.status === 'rejected' ? rec.status : rec.paid ? 'confirmed' : 'cart';
-                const fee = Math.round(Number(payment.amount || 0) * feePercent) / 100;
                 return (
                   <div key={eventId} className="card event-card lift">
                     {payment.poster ? <img src={payment.poster} alt={payment.title} className="cover" /> : <CoverArt title={payment.title} type={payment.type} />}
@@ -339,11 +335,12 @@ const StudentDashboard = ({ user, setUser, handleLogout, addToCart, cartLength }
                       <span className={`badge ${payment.type === 'mandatory' ? 'badge-info' : 'badge-muted'}`} style={{ textTransform: 'capitalize' }}>{payment.type}</span>
                       {rec && <StatusBadge status={status} />}
                     </div>
-                    <h3>{payment.title}</h3>
-                    <p style={{ color: '#6B7280', margin: 0 }}>{payment.description}</p>
+                    <h3><Link to={`/events/${eventId}`} className="card-link">{payment.title}</Link></h3>
+                    <p style={{ color: '#6B7280', margin: 0 }}>{payment.tagline || payment.description}</p>
+                    <Link to={`/events/${eventId}`} className="more-link">Details and cost breakdown</Link>
                     {status === 'rejected' && <div className="reject-note">Rejected: {rec.rejectionReason || 'payment could not be verified'}</div>}
                     <div className="event-meta">
-                      <div className="price">{money(payment.amount)}{feePercent > 0 && <small>+ {money(fee)} service fee</small>}</div>
+                      <div className="price">{money(payment.amount)}</div>
                       {status === 'due' && (
                         <button onClick={() => (payment.type === 'mandatory' ? handlePay(payment) : handleSelectOptional(payment))} className="btn btn-primary">
                           {payment.type === 'mandatory' ? 'Pay' : 'Add'}

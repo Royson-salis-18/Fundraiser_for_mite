@@ -30,6 +30,13 @@ export const authAPI = {
 
 // Events API
 export const eventsAPI = {
+  getTransparency: async (id) => {
+    const response = await fetch(`${API_URL}/events/${id}/transparency`, {
+      headers: { 'Authorization': `Bearer ${getToken()}` },
+    });
+    return response.json();
+  },
+
   getAll: async () => {
     const response = await fetch(`${API_URL}/events`);
     return response.json();
@@ -249,9 +256,9 @@ export const adminAPI = {
     return response.json();
   },
 
-  // Platform fee ledger
-  getFees: async () => {
-    const response = await fetch(`${API_URL}/admin/fees`, {
+  // Paid / unpaid analytics by branch, batch, class and event
+  getAnalytics: async () => {
+    const response = await fetch(`${API_URL}/admin/analytics`, {
       headers: { 'Authorization': `Bearer ${getToken()}` },
     });
     return response.json();

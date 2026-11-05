@@ -7,6 +7,8 @@ require('dotenv').config();
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const { computeFee, getFeePercent } = require('./fees');
+const { buildAnalytics } = require('./analytics');
+const { withSanitizedDetails } = require('./eventDetails');
 
 // ---- Password helpers: bcrypt hashes; legacy plaintext values are upgraded on next login ----
 const isBcryptHash = (v) => typeof v === 'string' && /^\$2[aby]\$\d{2}\$/.test(v);
@@ -305,7 +307,7 @@ app.post('/api/events', authenticateToken, async (req, res) => {
     }
 
     const event = {
-      ...req.body,
+      ...withSanitizedDetails(req.body),
       createdBy: req.user.id,
       createdAt: new Date(),
       updatedAt: new Date()
@@ -325,7 +327,8 @@ app.put('/api/events/:id', authenticateToken, async (req, res) => {
       return res.status(403).json({ error: 'Admin access required' });
     }
 
-    const { _id, ...updateData } = req.body;
+    const { _id, ...rawUpdate } = req.body;
+    const updateData = withSanitizedDetails(rawUpdate);
     updateData.updatedAt = new Date();
 
     const result = await db.collection('events').updateOne(
@@ -1257,6 +1260,53 @@ app.get('/api/admin/fees', authenticateToken, async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ error: 'Failed to load fees: ' + error.message });
+  }
+});
+
+// Admin: who has paid and who has not, by branch / batch / class / event, plus roster and timeline
+app.get('/api/admin/analytics', authenticateToken, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+    const [users, events] = await Promise.all([
+      db.collection('users').find({ role: 'student' }, { projection: { password: 0, 'payments.mandatory.screenshot': 0, 'payments.optional.screenshot': 0 } }).toArray(),
+      db.collection('events').find({}, { projection: { poster: 0, qrCode: 0 } }).toArray()
+    ]);
+    res.json(buildAnalytics(users, events, { feePercent: getFeePercent() }));
+  } catch (error) {
+    console.error('Analytics error:', error);
+    res.status(500).json({ error: 'Failed to build analytics: ' + error.message });
+  }
+});
+
+// Cost transparency for an event: budget lines plus how much has actually been raised.
+// Aggregate numbers only - no student information is returned.
+app.get('/api/events/:id/transparency', authenticateToken, async (req, res) => {
+  try {
+    if (!ObjectId.isValid(req.params.id)) return res.status(404).json({ error: 'Event not found' });
+    const event = await db.collection('events').findOne({ _id: new ObjectId(req.params.id) }, { projection: { poster: 0, qrCode: 0 } });
+    if (!event) return res.status(404).json({ error: 'Event not found' });
+    const id = String(event._id);
+    const students = await db.collection('users').find({ role: 'student' }, { projection: { payments: 1 } }).toArray();
+    let contributors = 0; let pending = 0;
+    for (const u of students) {
+      const rec = [...(u.payments?.mandatory || []), ...(u.payments?.optional || [])].find((r) => String(r.id ?? r._id) === id);
+      if (rec?.status === 'confirmed') contributors += 1;
+      else if (rec?.status === 'pending') pending += 1;
+    }
+    const price = Number(event.amount) || 0;
+    const budget = Array.isArray(event.budget) ? event.budget : [];
+    const budgetTotal = Number(event.budgetTotal) || budget.reduce((t, r) => t + (Number(r.amount) || 0), 0);
+    const raised = Math.round(contributors * price * 100) / 100;
+    res.json({
+      eventId: id, title: event.title, price, budget, budgetTotal,
+      contributors, pending, raised,
+      coverage: budgetTotal > 0 ? Math.round((raised / budgetTotal) * 1000) / 10 : null,
+      eligibleStudents: event.type === 'mandatory' ? students.length : null,
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to load transparency data: ' + error.message });
   }
 });
 

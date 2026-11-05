@@ -4,7 +4,7 @@ import Icon from './Icon';
 const read = () => { try { return localStorage.getItem('theme'); } catch { return null; } };
 
 const ThemeToggle = () => {
-  const [dark, setDark] = useState(() => read() === 'dark');
+  const [dark, setDark] = useState(() => (read() || 'dark') === 'dark');
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
     try { localStorage.setItem('theme', dark ? 'dark' : 'light'); } catch { /* ignore */ }

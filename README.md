@@ -47,6 +47,20 @@ A fundraising application for MITE (Mangalore Institute of Technology and Engine
    npm run dev
    ```
 
+## Reports and analytics (admin)
+
+`/admin-analytics` shows who has paid and who has not, derived from each student's USN (for example `4MT22CS001` is the 2022 batch, CS branch):
+
+- Overall collection rate, collected, outstanding and awaiting-review amounts
+- Breakdown by branch, batch, class (branch + batch) and event, with a branch x batch heatmap
+- Collections over the last 30 days
+- Filterable roster (branch, batch, status, search), per-student drill-down, CSV export, copyable reminder list and a print-friendly layout
+- API: `GET /api/admin/analytics` (admin only)
+
+## Event details and cost transparency
+
+Every event has a public detail page (`/events/:id`): tagline, about, highlights, schedule, venue, dates and registration deadline, a share/announcement kit (copy text or WhatsApp), and a line-by-line cost breakdown with how much has been raised so far. Admins edit these at `/admin/events/:id`. API: `GET /api/events/:id/transparency` returns aggregate figures only.
+
 ## Features added in this update
 
 - **My Payments** page for students: status for every payment, rejection reasons, resubmit, and printable receipts
@@ -74,7 +88,7 @@ Open http://localhost:5000. Demo logins: admin `admin` / `01011990`; student `4M
 ## Tests
 
 ```bash
-cd backend && node --test fees.test.js
+cd backend && node --test fees.test.js analytics.test.js eventDetails.test.js
 ```
 
 ## Security notes

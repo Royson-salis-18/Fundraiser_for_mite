@@ -13,6 +13,9 @@ import CheckoutPage from './pages/CheckoutPage';
 import PaymentConfirmationPage from './pages/PaymentConfirmationPage';
 import SettingsPage from './pages/SettingsPage';
 import MyPaymentsPage from './pages/MyPaymentsPage';
+import AdminAnalyticsPage from './pages/AdminAnalyticsPage';
+import EventDetailsPage from './pages/EventDetailsPage';
+import EventEditorPage from './pages/EventEditorPage';
 
 function App() {
   const [, setIsLoggedIn] = useState(false);
@@ -92,6 +95,24 @@ function App() {
             element={user?.role === 'admin'
               ? <PaymentConfirmationPage user={user} setUser={setUser} handleLogout={handleLogout} />
               : <Navigate to="/student-dashboard" replace />}
+          />
+          <Route
+            path="/admin-analytics"
+            element={user?.role === 'admin'
+              ? <AdminAnalyticsPage user={user} setUser={setUser} handleLogout={handleLogout} />
+              : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/admin/events/:id"
+            element={user?.role === 'admin'
+              ? <EventEditorPage user={user} setUser={setUser} handleLogout={handleLogout} />
+              : <Navigate to="/login" replace />}
+          />
+          <Route
+            path="/events/:id"
+            element={user
+              ? <EventDetailsPage user={user} setUser={setUser} handleLogout={handleLogout} addToCart={addToCart} cartLength={cart.length} />
+              : <Navigate to="/login" replace />}
           />
           <Route
             path="/my-payments"

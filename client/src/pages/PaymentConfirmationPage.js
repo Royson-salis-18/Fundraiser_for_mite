@@ -80,7 +80,7 @@ const PaymentConfirmationPage = ({ user, setUser, handleLogout }) => {
     <div className="page">
       <TopNav
         logoSrc={appLogo} title="MITE Admin Dashboard" titleTo="/admin-dashboard" subtitle="Payment Confirmation"
-        links={[{ to: '/admin-dashboard', label: 'Dashboard' }]}
+        links={[{ to: '/admin-dashboard', label: 'Dashboard' }, { to: '/admin-analytics', label: 'Reports' }]}
         extraRight={(<>
           <button className="btn btn-outline" onClick={() => setShowProfile(true)}>Profile</button>
           <button className="btn btn-outline" onClick={() => setShowSettings(true)}>Settings</button>
