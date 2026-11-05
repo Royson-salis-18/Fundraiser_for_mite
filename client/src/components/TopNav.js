@@ -1,44 +1,28 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import ThemeToggle from './ThemeToggle';
 
 const TopNav = ({ logoSrc, title, subtitle, titleTo, links = [], onLogout, extraRight }) => {
-  const titleContent = <h1 style={{ fontSize: '24px', fontWeight: 'bold', margin: 0 }}>{title}</h1>;
+  const brand = (
+    <div className="brand">
+      {logoSrc && <img src={logoSrc} alt="MITE logo" className="brand-logo" />}
+      <div className="brand-text">
+        <h1>{title}</h1>
+        {subtitle && <p>{subtitle}</p>}
+      </div>
+    </div>
+  );
 
   return (
     <header className="header">
-      {titleTo ? (
-        <Link to={titleTo} style={{ color: 'inherit', textDecoration: 'none' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '15px',}}>
-            {logoSrc && (
-              <img src={logoSrc} alt="Logo" style={{ width: '100px', height: 'auto', borderRadius: '8px' }} />
-            )}
-            <div>
-              {titleContent}
-              {subtitle && <p style={{ margin: 0 }}>{subtitle}</p>}
-            </div>
-          </div>
-        </Link>
-      ) : (
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          {logoSrc && (
-            <img src={logoSrc} alt="Logo" style={{ width: '100px', height: 'auto', borderRadius: '8px' }} />
-          )}
-          <div>
-            {titleContent}
-            {subtitle && <p style={{ margin: 0 }}>{subtitle}</p>}
-          </div>
-        </div>
-      )}
-      <nav style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+      {titleTo ? <Link to={titleTo} className="brand-link">{brand}</Link> : brand}
+      <nav className="nav">
         {links.map((link) => (
-          <Link key={link.to} to={link.to} className="btn btn-outline">
-            {link.label}
-          </Link>
+          <Link key={link.to} to={link.to} className="nav-link">{link.label}</Link>
         ))}
         {extraRight}
-        {onLogout && (
-          <button className="btn btn-outline" onClick={onLogout}>Logout</button>
-        )}
+        <ThemeToggle />
+        {onLogout && <button className="btn btn-ghost" onClick={onLogout}>Logout</button>}
       </nav>
     </header>
   );

@@ -12,10 +12,16 @@ import CartPage from './pages/CartPage';
 import CheckoutPage from './pages/CheckoutPage';
 import PaymentConfirmationPage from './pages/PaymentConfirmationPage';
 import SettingsPage from './pages/SettingsPage';
+import MyPaymentsPage from './pages/MyPaymentsPage';
 
 function App() {
   const [, setIsLoggedIn] = useState(false);
-  const [user, setUser] = useState(null);
+  // Restore the session after a page refresh (token + user are saved at login)
+  const [user, setUser] = useState(() => {
+    try {
+      return localStorage.getItem('token') ? JSON.parse(localStorage.getItem('user')) : null;
+    } catch { return null; }
+  });
   const [cart, setCart] = useState([]);
 
   // Set favicon and apple-touch-icon to use the src logo without renaming/moving
@@ -48,6 +54,7 @@ function App() {
 
   // CHANGE THIS FUNCTION - Add setCart([]) here
   const handleLogout = () => {
+    try { localStorage.removeItem('token'); localStorage.removeItem('user'); } catch { /* ignore */ }
     setIsLoggedIn(false);
     setUser(null);
     setCart([]); // ADD THIS LINE - Clear cart on logout
@@ -85,6 +92,12 @@ function App() {
             element={user?.role === 'admin'
               ? <PaymentConfirmationPage user={user} setUser={setUser} handleLogout={handleLogout} />
               : <Navigate to="/student-dashboard" replace />}
+          />
+          <Route
+            path="/my-payments"
+            element={user?.role === 'student'
+              ? <MyPaymentsPage user={user} setUser={setUser} handleLogout={handleLogout} />
+              : <Navigate to="/login" replace />}
           />
           <Route
             path="/cart"

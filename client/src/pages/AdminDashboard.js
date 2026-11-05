@@ -1,14 +1,18 @@
+import { useToast } from '../components/Toast';
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventsAPI, adminAPI } from '../services/api';
+import { StatCard, EmptyState, Skeleton, money, downloadCSV } from '../components/ui';
 import appLogo from '../1630654323517.jpg';
 import TopNav from '../components/TopNav';
 import ProfileOverlay from '../components/ProfileOverlay';
 import SettingsOverlay from '../components/SettingsOverlay';
 
 const AdminDashboard = ({ user, setUser, handleLogout }) => {
+  const { error: toastError } = useToast();
   const [payments, setPayments] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [query, setQuery] = useState('');
   const [stats, setStats] = useState({ totalStudents: 0, totalPayments: 0 });
   const [fees, setFees] = useState({ feePercent: 0, totals: { fees: 0, collected: 0, count: 0 } });
   const [showEditModal, setShowEditModal] = useState(false);
@@ -72,7 +76,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
       const result = await eventsAPI.update(eventId, selectedPayment);
       
       if (result.error) {
-        alert('Failed to update event: ' + result.error);
+        toastError('Failed to update event: ' + result.error);
         return;
       }
 
@@ -82,12 +86,17 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
       setShowEditModal(false);
     } catch (error) {
       console.error('Update error:', error);
-      alert('Failed to update event. Please try again.');
+      toastError('Failed to update event. Please try again.');
     }
   };
 
-  const mandatoryPayments = payments.filter((p) => p.type === 'mandatory');
-  const optionalEvents = payments.filter((p) => p.type === 'optional');
+  const matches = (p) => `${p.title} ${p.description || ''}`.toLowerCase().includes(query.trim().toLowerCase());
+  const mandatoryPayments = payments.filter((p) => p.type === 'mandatory' && matches(p));
+  const optionalEvents = payments.filter((p) => p.type === 'optional' && matches(p));
+  const exportFees = () => downloadCSV('platform-fee-ledger.csv', [
+    ['Receipt date', 'Event', 'Base amount', 'Fee %', 'Fee amount', 'Total'],
+    ...(fees.entries || []).map((e) => [new Date(e.confirmedAt).toLocaleString('en-IN'), e.eventTitle, e.baseAmount, e.feePercent, e.feeAmount, e.totalAmount]),
+  ]);
 
   const handleOpenCreate = () => {
     setNewPayment({ type: 'optional', title: '', description: '', poster: '', amount: 0, targetClass: '', payeeName: '', payeeUpiId: '', qrCode: '' });
@@ -152,7 +161,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
       const result = await eventsAPI.create(newPayment);
       
       if (result.error) {
-        alert('Failed to create event: ' + result.error);
+        toastError('Failed to create event: ' + result.error);
         return;
       }
 
@@ -167,7 +176,7 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
       setPosterPreview(null);
     } catch (error) {
       console.error('Create error:', error);
-      alert('Failed to create event. Please try again.');
+      toastError('Failed to create event. Please try again.');
     }
   };
 
@@ -190,43 +199,27 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
         onLogout={() => { handleLogout(); navigate('/login'); }}
       />
       <main className="container wide">
-        {loading && (
-          <div style={{ textAlign: 'center', padding: '40px' }}>
-            <p>Loading events...</p>
-          </div>
-        )}
+        {loading && (<><div className="stat-grid"><Skeleton height={92} count={5} /></div><Skeleton height={260} /></>)}
         {!loading && (
         <>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px', marginBottom: '20px' }}>
-          <div className="card">
-            <h2 style={{ color: '#EF7100' }}>Mandatory Payments</h2>
-            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{mandatoryPayments.length}</p>
-          </div>
-          <div className="card">
-            <h2 style={{ color: '#EF7100' }}>Optional Events</h2>
-            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{optionalEvents.length}</p>
-          </div>
-          <div className="card">
-            <h2 style={{ color: '#EF7100' }}>Total Students Enrolled</h2>
-            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{stats.totalStudents}</p>
-          </div>
-          <div className="card">
-            <h2 style={{ color: '#EF7100' }}>Payments Received</h2>
-            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>{stats.totalPayments}</p>
-          </div>
-          <div className="card">
-            <h2 style={{ color: '#EF7100' }}>Platform Fees ({fees.feePercent}%)</h2>
-            <p style={{ fontSize: '36px', fontWeight: 'bold' }}>₹{Number(fees.totals.fees).toLocaleString('en-IN')}</p>
-            <p style={{ color: '#6B7280', margin: 0 }}>on ₹{Number(fees.totals.collected).toLocaleString('en-IN')} confirmed · {fees.totals.count} payments</p>
-          </div>
+        <div className="stat-grid">
+          <StatCard icon="building" tone="navy" label="Mandatory fees" value={payments.filter((p) => p.type === 'mandatory').length} />
+          <StatCard icon="sparkle" tone="violet" label="Optional events" value={payments.filter((p) => p.type === 'optional').length} />
+          <StatCard icon="users" tone="orange" label="Students enrolled" value={stats.totalStudents} />
+          <StatCard icon="check" tone="green" label="Payments received" value={stats.totalPayments} />
+          <StatCard icon="wallet" tone="orange" label={`Platform fees (${fees.feePercent}%)`} value={money(fees.totals.fees)} hint={`on ${money(fees.totals.collected)} · ${fees.totals.count} confirmed`} />
         </div>
 
         <div className="card">
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
             <h2 style={{ fontSize: '24px', fontWeight: 'bold' }}>All Payments & Events</h2>
-            <button className="btn btn-accent" onClick={handleOpenCreate}>Create New</button>
+            <div style={{ display: 'flex', gap: 10 }}>
+              <input className="input" style={{ width: 240 }} placeholder="Search events…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search events" />
+              <button className="btn btn-accent" onClick={handleOpenCreate}>Create New</button>
+            </div>
           </div>
 
+          {query && !mandatoryPayments.length && !optionalEvents.length && <EmptyState icon="search" title="No events match your search" />}
           <h3 style={{ color: '#1A4E9B', marginBottom: '10px' }}>Mandatory Fees & Funds</h3>
           <div className="grid-cards" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
             {mandatoryPayments.map((payment) => (
@@ -260,6 +253,32 @@ const AdminDashboard = ({ user, setUser, handleLogout }) => {
               </div>
             ))}
           </div>
+        </div>
+
+        <div className="card" style={{ marginTop: 20 }}>
+          <div className="toolbar" style={{ justifyContent: 'space-between' }}>
+            <h2 style={{ margin: 0, fontSize: 22 }}>Platform fee ledger</h2>
+            <button className="btn btn-outline" onClick={exportFees} disabled={!(fees.entries || []).length}>Export CSV</button>
+          </div>
+          {!(fees.entries || []).length ? (
+            <EmptyState icon="wallet" title="No fees recorded yet">Fees appear here as soon as you confirm a payment.</EmptyState>
+          ) : (
+            <div className="table-wrap">
+              <table className="table">
+                <thead><tr><th>Confirmed</th><th>Event</th><th>Base</th><th>Fee</th><th>Total</th></tr></thead>
+                <tbody>
+                  {fees.entries.slice(0, 15).map((e) => (
+                    <tr key={e._id}>
+                      <td>{new Date(e.confirmedAt).toLocaleString('en-IN')}</td>
+                      <td>{e.eventTitle}</td><td>{money(e.baseAmount)}</td>
+                      <td><strong>{money(e.feeAmount)}</strong> <span style={{ color: 'var(--color-muted)' }}>({e.feePercent}%)</span></td>
+                      <td>{money(e.totalAmount)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         </>
         )}

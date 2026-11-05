@@ -1,240 +1,154 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import TopNav from '../components/TopNav';
 import appLogo from '../1630654323517.jpg';
 import ProfileOverlay from '../components/ProfileOverlay';
 import SettingsOverlay from '../components/SettingsOverlay';
+import { EmptyState, Skeleton, StatCard, money, downloadCSV } from '../components/ui';
+import { useToast } from '../components/Toast';
 import { adminAPI } from '../services/api';
 
 const PaymentConfirmationPage = ({ user, setUser, handleLogout }) => {
   const [pendingPayments, setPendingPayments] = useState([]);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState({});
+  const [rejecting, setRejecting] = useState(null); // key of payment being rejected
+  const [reason, setReason] = useState('');
+  const [query, setQuery] = useState('');
+  const [preview, setPreview] = useState(null);
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const navigate = useNavigate();
+  const { success, error } = useToast();
 
   useEffect(() => {
-    if (user?.role !== 'admin') {
-      navigate('/admin-dashboard');
-    }
+    if (user?.role !== 'admin') navigate('/admin-dashboard');
   }, [user, navigate]);
 
-  const loadPendingPayments = async () => {
-    setLoading(true);
+  const load = useCallback(async () => {
     try {
-      console.log('🔄 Loading pending payments...');
       const data = await adminAPI.getPendingPayments();
-      console.log('📥 Received data:', data);
-      console.log('📥 Data type:', typeof data);
-      console.log('📥 Data keys:', data ? Object.keys(data) : 'null');
-      console.log('📥 pendingPayments type:', data?.pendingPayments ? typeof data.pendingPayments : 'undefined');
-      console.log('📥 pendingPayments is array?', Array.isArray(data?.pendingPayments));
-      
-      if (data && !data.error) {
-        if (data.pendingPayments && Array.isArray(data.pendingPayments)) {
-          console.log(`✅ Found ${data.pendingPayments.length} pending payments`);
-          if (data.pendingPayments.length > 0) {
-            console.log('📋 First payment sample:', JSON.stringify(data.pendingPayments[0], null, 2));
-          }
-          setPendingPayments(data.pendingPayments);
-        } else {
-          console.log('⚠️  No pendingPayments array in response');
-          console.log('⚠️  Response structure:', JSON.stringify(data, null, 2));
-          setPendingPayments([]);
-        }
-      } else {
-        console.error('❌ API returned error:', data?.error);
-        if (data?.error) {
-          console.error('Error details:', data.error);
-          alert(`Failed to load pending payments: ${data.error}`);
-        }
+      if (data && !data.error && Array.isArray(data.pendingPayments)) setPendingPayments(data.pendingPayments);
+      else {
         setPendingPayments([]);
+        if (data?.error) error(`Failed to load pending payments: ${data.error}`);
       }
-    } catch (error) {
-      console.error('❌ Failed to load pending payments:', error);
-      console.error('❌ Error stack:', error.stack);
-      // Check if it's a JSON parse error
-      if (error.message && error.message.includes('JSON')) {
-        console.error('JSON parse error - server may be returning HTML instead of JSON');
-        console.error('This usually means the endpoint does not exist or there is a server error');
-        alert('Server returned invalid response. Check console for details.');
-      } else {
-        alert(`Failed to load pending payments: ${error.message}`);
-      }
+    } catch (e) {
       setPendingPayments([]);
+      error('Could not reach the server. Please try again.');
     } finally {
       setLoading(false);
     }
-  };
+  }, [error]);
 
   useEffect(() => {
-    loadPendingPayments();
-    
-    // Refresh every 30 seconds
-    const interval = setInterval(loadPendingPayments, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    load();
+    const t = setInterval(load, 30000);
+    return () => clearInterval(t);
+  }, [load]);
 
-  const handleConfirmPayment = async (payment) => {
+  const decide = async (payment, status, why) => {
     const key = `${payment.studentId}-${payment.paymentId}`;
-    setProcessing({ ...processing, [key]: 'confirming' });
-    
+    setProcessing((p) => ({ ...p, [key]: status }));
     try {
-      const result = await adminAPI.confirmPayment(
-        payment.studentId,
-        payment.paymentId,
-        'confirmed',
-        payment.eventType
-      );
-      
-      if (result.error) {
-        alert('Failed to confirm payment: ' + result.error);
-        setProcessing({ ...processing, [key]: null });
-        return;
-      }
-
-      // Remove from pending list and reload to refresh counts
-      await loadPendingPayments();
-      
-      setProcessing({ ...processing, [key]: null });
-      alert('Payment confirmed successfully!');
-    } catch (error) {
-      console.error('Confirm payment error:', error);
-      alert('Failed to confirm payment. Please try again.');
-      setProcessing({ ...processing, [key]: null });
+      const result = await adminAPI.confirmPayment(payment.studentId, payment.paymentId, status, payment.eventType, why);
+      if (result.error) { error(result.error); return; }
+      success(status === 'confirmed' ? 'Payment confirmed — receipt is now available to the student' : 'Payment rejected');
+      setRejecting(null); setReason('');
+      await load();
+    } catch {
+      error('Action failed. Please try again.');
+    } finally {
+      setProcessing((p) => ({ ...p, [key]: null }));
     }
   };
+
+  const shown = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return pendingPayments;
+    return pendingPayments.filter((p) => `${p.studentUSN} ${p.studentName} ${p.eventTitle} ${p.utr}`.toLowerCase().includes(q));
+  }, [pendingPayments, query]);
+
+  const exportCSV = () => downloadCSV('pending-payments.csv', [
+    ['USN', 'Name', 'Email', 'Event', 'Type', 'Amount', 'UTR'],
+    ...shown.map((p) => [p.studentUSN, p.studentName, p.studentEmail, p.eventTitle, p.eventType, p.eventAmount, p.utr]),
+  ]);
+
+  const pendingTotal = pendingPayments.reduce((s, p) => s + (Number(p.eventAmount) || 0), 0);
 
   return (
     <div className="page">
       <TopNav
-        logoSrc={appLogo}
-        title="MITE Admin Dashboard"
-        titleTo="/admin-dashboard"
-        subtitle="Payment Confirmation"
-        links={[
-          { to: '/admin-dashboard', label: 'Dashboard' },
-        ]}
-        extraRight={(
-          <>
-            <button className="btn btn-outline" onClick={() => setShowProfile(true)}>Profile</button>
-            <button className="btn btn-outline" onClick={() => setShowSettings(true)}>Settings</button>
-          </>
-        )}
+        logoSrc={appLogo} title="MITE Admin Dashboard" titleTo="/admin-dashboard" subtitle="Payment Confirmation"
+        links={[{ to: '/admin-dashboard', label: 'Dashboard' }]}
+        extraRight={(<>
+          <button className="btn btn-outline" onClick={() => setShowProfile(true)}>Profile</button>
+          <button className="btn btn-outline" onClick={() => setShowSettings(true)}>Settings</button>
+        </>)}
         onLogout={() => { handleLogout(); navigate('/login'); }}
       />
       <main className="container wide">
-        <div className="card" style={{ marginBottom: 20 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-            <h1 style={{ fontSize: '28px', fontWeight: 'bold', margin: 0 }}>Payment Confirmation</h1>
-            <button onClick={loadPendingPayments} className="btn btn-outline" disabled={loading}>
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
+        <div className="stat-grid">
+          <StatCard icon="clock" tone="orange" label="Awaiting review" value={pendingPayments.length} />
+          <StatCard icon="wallet" tone="green" label="Value pending" value={money(pendingTotal)} hint="Before platform fee" />
+        </div>
+
+        <div className="card">
+          <div className="toolbar">
+            <input className="input" placeholder="Search USN, name, event or UTR…" value={query} onChange={(e) => setQuery(e.target.value)} aria-label="Search pending payments" />
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+              <button className="btn btn-outline" onClick={exportCSV} disabled={!shown.length}>Export CSV</button>
+              <button className="btn btn-outline" onClick={load}>Refresh</button>
+            </div>
           </div>
 
-          {loading ? (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <p style={{ color: '#6B7280' }}>Loading pending payments...</p>
-            </div>
-          ) : pendingPayments.length === 0 ? (
-            <div style={{ textAlign: 'center', padding: 40 }}>
-              <p style={{ fontSize: '20px', color: '#1A4E9B', marginBottom: 8 }}>No pending payments</p>
-              <p style={{ color: '#6B7280' }}>All payments have been reviewed.</p>
-            </div>
+          {loading ? <Skeleton height={150} count={2} /> : shown.length === 0 ? (
+            <EmptyState icon="sparkle" title="You're all caught up">{query ? 'No payments match your search.' : 'There are no payments waiting for review.'}</EmptyState>
           ) : (
             <div style={{ display: 'grid', gap: 16 }}>
-              {pendingPayments.map((payment) => {
-                const key = `${payment.studentId}-${payment.paymentId}`;
-                const isProcessing = processing[key];
-                
+              {shown.map((p) => {
+                const key = `${p.studentId}-${p.paymentId}`;
+                const busy = processing[key];
                 return (
-                  <div key={key} className="card" style={{ border: '1px solid #E5E7EB', padding: 20 }}>
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: 24 }}>
-                      {/* Student Details */}
+                  <div key={key} className="card" style={{ boxShadow: 'none' }}>
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 24 }}>
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: 16, color: '#1A4E9B' }}>Student Details</h3>
-                        <div style={{ display: 'grid', gap: 12 }}>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>USN:</span>
-                            <strong style={{ fontSize: '16px' }}>{payment.studentUSN}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>Name:</span>
-                            <strong style={{ fontSize: '16px' }}>{payment.studentName}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>Email:</span>
-                            <span style={{ fontSize: '14px' }}>{payment.studentEmail}</span>
-                          </div>
-                        </div>
+                        <div className="stat-label">Student</div>
+                        <div style={{ fontSize: 17, fontWeight: 700 }}>{p.studentName}</div>
+                        <div style={{ color: 'var(--color-muted)' }}>{p.studentUSN}</div>
+                        <div style={{ color: 'var(--color-muted)', fontSize: 13 }}>{p.studentEmail}</div>
                       </div>
-
-                      {/* Event Details */}
                       <div>
-                        <h3 style={{ fontSize: '18px', fontWeight: 'bold', marginBottom: 16, color: '#1A4E9B' }}>Event Details</h3>
-                        <div style={{ display: 'grid', gap: 12 }}>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>Event:</span>
-                            <strong style={{ fontSize: '16px' }}>{payment.eventTitle}</strong>
-                          </div>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>Type:</span>
-                            <span style={{ fontSize: '14px', textTransform: 'capitalize' }}>{payment.eventType}</span>
-                          </div>
-                          <div>
-                            <span style={{ color: '#6B7280', fontSize: '14px', display: 'block', marginBottom: 4 }}>Amount:</span>
-                            <strong style={{ fontSize: '18px', color: '#EF7100' }}>₹{payment.eventAmount}</strong>
-                          </div>
-                        </div>
+                        <div className="stat-label">Event</div>
+                        <div style={{ fontSize: 17, fontWeight: 700 }}>{p.eventTitle}</div>
+                        <span className="badge badge-muted" style={{ textTransform: 'capitalize' }}>{p.eventType}</span>
+                        <div className="price" style={{ marginTop: 6 }}>{money(p.eventAmount)}</div>
                       </div>
-
-                      {/* UTR and Confirm Button */}
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, minWidth: 250 }}>
-                        <div style={{ padding: 16, background: '#F9FAFB', borderRadius: 8 }}>
-                          <h4 style={{ fontSize: '14px', fontWeight: 'bold', marginBottom: 8, color: '#6B7280' }}>UTR Number</h4>
-                          <div style={{ 
-                            fontSize: '18px', 
-                            fontFamily: 'monospace', 
-                            fontWeight: 'bold',
-                            color: '#1A4E9B',
-                            wordBreak: 'break-all'
-                          }}>
-                            {payment.utr || 'N/A'}
-                          </div>
-                        </div>
-
-                        {payment.screenshot && (
-                          <div style={{ marginTop: 8 }}>
-                            <span style={{ color: '#6B7280', fontSize: '12px', display: 'block', marginBottom: 8 }}>Payment Screenshot:</span>
-                            <img 
-                              src={payment.screenshot} 
-                              alt="Payment Screenshot" 
-                              style={{ 
-                                maxWidth: '100%', 
-                                maxHeight: '200px', 
-                                borderRadius: 8, 
-                                border: '1px solid #E5E7EB',
-                                cursor: 'pointer'
-                              }}
-                              onClick={() => {
-                                const newWindow = window.open();
-                                newWindow.document.write(`<img src="${payment.screenshot}" style="max-width:100%; height:auto;" />`);
-                              }}
-                            />
-                          </div>
+                      <div>
+                        <div className="stat-label">UTR</div>
+                        <div style={{ fontFamily: 'monospace', fontWeight: 700, wordBreak: 'break-all' }}>{p.utr || 'N/A'}</div>
+                        {p.screenshot && (
+                          <img src={p.screenshot} alt="Payment screenshot" onClick={() => setPreview(p.screenshot)}
+                            style={{ marginTop: 8, maxHeight: 110, maxWidth: '100%', borderRadius: 8, border: '1px solid #E5E7EB', cursor: 'zoom-in' }} />
                         )}
-
-                        <button
-                          onClick={() => handleConfirmPayment(payment)}
-                          className="btn btn-primary"
-                          disabled={!!isProcessing}
-                          style={{ width: '100%', padding: '12px', fontSize: '16px', fontWeight: 'bold' }}
-                        >
-                          {isProcessing === 'confirming' ? 'Confirming...' : 'Confirm Payment'}
-                        </button>
                       </div>
                     </div>
+
+                    {rejecting === key ? (
+                      <div style={{ marginTop: 16 }}>
+                        <label className="label" htmlFor={`r-${key}`}>Reason shown to the student</label>
+                        <input id={`r-${key}`} className="input" value={reason} maxLength={300} onChange={(e) => setReason(e.target.value)} placeholder="e.g. UTR doesn't match the screenshot" />
+                        <div style={{ display: 'flex', gap: 8, marginTop: 10 }}>
+                          <button className="btn btn-primary" disabled={!!busy} onClick={() => decide(p, 'rejected', reason)}>{busy === 'rejected' ? 'Rejecting…' : 'Confirm rejection'}</button>
+                          <button className="btn btn-outline" onClick={() => { setRejecting(null); setReason(''); }}>Cancel</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', gap: 10, marginTop: 16, justifyContent: 'flex-end' }}>
+                        <button className="btn btn-outline" disabled={!!busy} onClick={() => setRejecting(key)}>Reject</button>
+                        <button className="btn btn-primary" disabled={!!busy} onClick={() => decide(p, 'confirmed')}>{busy === 'confirmed' ? 'Confirming…' : 'Confirm payment'}</button>
+                      </div>
+                    )}
                   </div>
                 );
               })}
@@ -243,15 +157,15 @@ const PaymentConfirmationPage = ({ user, setUser, handleLogout }) => {
         </div>
       </main>
 
-      {showProfile && (
-        <ProfileOverlay user={user} setUser={setUser} onClose={() => setShowProfile(false)} />
+      {preview && (
+        <div onClick={() => setPreview(null)} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,.75)', display: 'grid', placeItems: 'center', zIndex: 900, cursor: 'zoom-out' }}>
+          <img src={preview} alt="Payment screenshot full size" style={{ maxWidth: '92vw', maxHeight: '90vh', borderRadius: 12 }} />
+        </div>
       )}
-      {showSettings && (
-        <SettingsOverlay user={user} onClose={() => setShowSettings(false)} />
-      )}
+      {showProfile && <ProfileOverlay user={user} setUser={setUser} onClose={() => setShowProfile(false)} />}
+      {showSettings && <SettingsOverlay user={user} onClose={() => setShowSettings(false)} />}
     </div>
   );
 };
 
 export default PaymentConfirmationPage;
-

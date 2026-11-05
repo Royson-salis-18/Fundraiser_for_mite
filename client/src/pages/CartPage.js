@@ -1,3 +1,4 @@
+import { useToast } from '../components/Toast';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventsAPI, userAPI } from '../services/api';
@@ -7,6 +8,7 @@ import ProfileOverlay from '../components/ProfileOverlay';
 import SettingsOverlay from '../components/SettingsOverlay';
 
 const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
+  const { error: toastError } = useToast();
   const navigate = useNavigate();
   const [showProfile, setShowProfile] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
@@ -71,7 +73,7 @@ const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
 
       const result = await userAPI.updatePayments(updatedPayments);
       if (result.error) {
-        alert('Failed to remove item: ' + result.error);
+        toastError('Failed to remove item: ' + result.error);
         return;
       }
 
@@ -90,7 +92,7 @@ const CartPage = ({ cart, removeFromCart, user, setUser, handleLogout }) => {
       }));
     } catch (error) {
       console.error('Remove error:', error);
-      alert('Failed to remove item. Please try again.');
+      toastError('Failed to remove item. Please try again.');
     }
   };
 

@@ -1,3 +1,4 @@
+import { useToast } from '../components/Toast';
 import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { eventsAPI, userAPI, configAPI } from '../services/api';
@@ -7,6 +8,7 @@ import ProfileOverlay from '../components/ProfileOverlay';
 import SettingsOverlay from '../components/SettingsOverlay';
 
 const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
+  const { error: toastError } = useToast();
   const [processing, setProcessing] = useState(false);
   const [proofById, setProofById] = useState({}); // { [id]: { utr: string, screenshot: dataURL } }
   const [showProfile, setShowProfile] = useState(false);
@@ -163,7 +165,7 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
       const result = await userAPI.updatePayments(updatedPayments);
       
       if (result.error) {
-        alert('Failed to submit payment: ' + result.error);
+        toastError('Failed to submit payment: ' + result.error);
         setProcessing(false);
         return;
       }
@@ -184,7 +186,7 @@ const CheckoutPage = ({ user, cart, clearCart, setUser, handleLogout }) => {
       navigate('/student-dashboard', { state: { showPaymentSuccess: true } });
     } catch (error) {
       console.error('Payment submission error:', error);
-      alert('Failed to submit payment. Please try again.');
+      toastError('Failed to submit payment. Please try again.');
       setProcessing(false);
     }
   };

@@ -1088,6 +1088,7 @@ app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
     }
 
     const { studentId, paymentId, status, eventType } = req.body;
+    const reason = typeof req.body.reason === 'string' ? req.body.reason.trim().slice(0, 300) : '';
 
     if (!studentId || !paymentId || !status || !eventType) {
       await session.abortTransaction();
@@ -1135,11 +1136,23 @@ app.put('/api/admin/confirm-payment', authenticateToken, async (req, res) => {
     paymentArray[paymentIndex].updatedAt = now;
     
     if (status === 'confirmed') {
+      const feeEvent = ObjectId.isValid(paymentId)
+        ? await db.collection('events').findOne({ _id: new ObjectId(paymentId) }, { session })
+        : null;
+      const fee = computeFee(feeEvent?.amount, getFeePercent());
+      paymentArray[paymentIndex].baseAmount = fee.baseAmount;
+      paymentArray[paymentIndex].feeAmount = fee.feeAmount;
+      paymentArray[paymentIndex].feePercent = getFeePercent();
+      paymentArray[paymentIndex].totalAmount = fee.totalAmount;
+      paymentArray[paymentIndex].receiptNo = paymentArray[paymentIndex].receiptNo ||
+        `MITE-${now.getFullYear()}-${String(studentId).slice(-4).toUpperCase()}${String(paymentId).slice(-4).toUpperCase()}`;
+      delete paymentArray[paymentIndex].rejectionReason;
       paymentArray[paymentIndex].confirmedAt = now;
       paymentArray[paymentIndex].confirmedBy = req.user.id;
       paymentArray[paymentIndex].paid = true;
     } else if (status === 'rejected') {
       paymentArray[paymentIndex].rejectedAt = now;
+      paymentArray[paymentIndex].rejectionReason = reason || 'Payment could not be verified';
       paymentArray[paymentIndex].rejectedBy = req.user.id;
       paymentArray[paymentIndex].paid = false;
     }

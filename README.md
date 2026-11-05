@@ -47,6 +47,14 @@ A fundraising application for MITE (Mangalore Institute of Technology and Engine
    npm run dev
    ```
 
+## Features added in this update
+
+- **My Payments** page for students: status for every payment, rejection reasons, resubmit, and printable receipts
+- **Admin review**: confirm or reject with a reason shown to the student, search, full-size screenshot preview, CSV export
+- **Fee ledger table** on the admin dashboard with CSV export
+- Event search and filters, toast notifications, skeleton loaders, empty states
+- Light and dark themes, session restore after refresh
+
 ## Platform fee
 
 Set `PLATFORM_FEE_PERCENT` (0-20, default 2). Checkout shows event price, fee and total payable. When an admin confirms a payment, the fee is written to the `platform_fees` collection (reversed if the payment is later rejected). Admins see totals on the dashboard.

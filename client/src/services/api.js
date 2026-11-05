@@ -237,14 +237,14 @@ export const adminAPI = {
   },
 
   // Confirm or reject a payment
-  confirmPayment: async (studentId, paymentId, status, eventType) => {
+  confirmPayment: async (studentId, paymentId, status, eventType, reason) => {
     const response = await fetch(`${API_URL}/admin/confirm-payment`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${getToken()}`,
       },
-      body: JSON.stringify({ studentId, paymentId, status, eventType }),
+      body: JSON.stringify({ studentId, paymentId, status, eventType, reason }),
     });
     return response.json();
   },
